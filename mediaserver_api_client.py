@@ -83,7 +83,7 @@ class MediaServerClient:
                 break
             yield data
 
-    def chunked_upload(self, file_path, title="", category="Unsorted"):
+    def chunked_upload(self, file_path, title="", category="Unsorted", **kwargs):
         total_size = os.path.getsize(file_path)
         chunks_count = math.ceil(total_size / self.UPLOAD_CHUNK_SIZE)
         start_offset = 0
@@ -110,9 +110,14 @@ class MediaServerClient:
             'title': title,
             'code': upload_data['upload_id'],
             'origin': self.config['CLIENT_ID'],
-            'ocr': False,
         }
-        resp = self.api('medias/add/', method='post', data=metadata)
+        try:
+            arguments = {**metadata, **kwargs}
+        except Exception:
+            # Python2
+            arguments = metadata.copy()
+            arguments.update(**kwargs)
+        resp = self.api('medias/add/', method='post', data=arguments)
         return resp
 
 
@@ -138,5 +143,5 @@ if __name__ == '__main__':
     ms = MediaServerClient(config)
 
     # print(ms.api('users/add/', method='post', data={'email': 'test@test.com'}))
-    # ms.chunked_upload('/tmp/test.mp4', title='Test multichunk upload')
+    # ms.chunked_upload('/tmp/test.mp4', title='Test multichunk upload', layout='webinar', detect_slide=['0_0-640_480-750'])
     # fname = sys.argv[1]
