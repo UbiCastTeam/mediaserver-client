@@ -111,12 +111,7 @@ class MediaServerClient:
             'code': upload_data['upload_id'],
             'origin': self.config['CLIENT_ID'],
         }
-        try:
-            arguments = {**metadata, **kwargs}
-        except Exception:
-            # Python2
-            arguments = metadata.copy()
-            arguments.update(**kwargs)
+        arguments = {**metadata, **kwargs}
         resp = self.api('medias/add/', method='post', data=arguments)
         return resp
 
