@@ -27,28 +27,27 @@ CONFIG_DEFAULT = {
 }
 
 
-def save_config(config, config_fpath):
-    with open(config_fpath, 'w') as config_file:
-        json.dump(config, config_file, sort_keys=True, indent=4, separators=(',', ': '))
-
-
-def read_config(config_fpath):
-    logger.debug('Reading %s', config_fpath)
-    config = CONFIG_DEFAULT.copy()
-    try:
-        with open(config_fpath, 'r') as config_file:
-            config.update(json.load(config_file))
-    except Exception as e:
-        logger.error('Error while parsing configuration file, using defaults (%s).', e)
-    return config
-
-
 class MediaServerClient:
-    def __init__(self, config):
-        self.config = config
-        if not config['VERIFY_SSL']:
+    def __init__(self, config_path=None):
+        self.config = CONFIG_DEFAULT.copy()
+        self.config_path = config_path or 'config.json'
+        if os.path.exists(self.config_path):
+            self.load_config()
+        if not self.config['VERIFY_SSL']:
             from requests.packages.urllib3.exceptions import InsecureRequestWarning
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+    def save_config(self):
+        with open(self.config_path, 'w') as fo:
+            json.dump(self.config, fo, sort_keys=True, indent=4, separators=(',', ': '))
+
+    def load_config(self):
+        logger.debug('Reading %s', self.config_path)
+        try:
+            with open(self.config_path, 'r') as fo:
+                self.config.update(json.load(fo))
+        except Exception as e:
+            logger.error('Error while parsing configuration file, using defaults (%s).', e)
 
     def request(self, url, method='get', data=None, params=None, files=None, headers=None, json=True, timeout=10):
         global session
@@ -130,18 +129,16 @@ if __name__ == '__main__':
     urllib3_logger = logging.getLogger('requests.packages.urllib3')
     urllib3_logger.setLevel(logging.WARNING)
 
-    try:
-        config_fpath = sys.argv[1]
-    except IndexError:
-        config_fpath = 'config.json'
-    config = read_config(config_fpath)
-
-    msc = MediaServerClient(config)
+    config_path = sys.argv[1] if len(sys.argv) > 1 else None
+    msc = MediaServerClient(config_path)
     # ping
     print(msc.api('/', method='get'))
 
-    # add media
-    # print(msc.add_media('Test multichunk upload', file_path='/tmp/test.mp4', layout='webinar', detect_slide=['0_0-640_480-750']))
+    # add media with a video
+    # print(msc.add_media('Test multichunk upload mp4', file_path='/tmp/test.mp4', layout='webinar', detect_slide=['0_0-640_480-750']))
+
+    # add media with a zip
+    # print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
 
     # add user
     # print(ms.api('users/add/', method='post', data={'email': 'test@test.com'}))
