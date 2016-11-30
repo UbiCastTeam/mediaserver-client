@@ -76,7 +76,13 @@ class MediaServerClient:
         req = req_function(**req_args)
         if req.status_code != 200:
             raise Exception('HTTP %s error on %s: %s' % (req.status_code, url, req.text))
-        return req.json() if json else req.text.strip()
+        if json:
+            response = req.json()
+            if 'success' in response and not response['success']:
+                raise Exception('API call failed: %s' % (response.get('error', response.get('message', 'No information on error.'))))
+        else:
+            response = req.text.strip()
+        return response
 
     def api(self, suffix, *args, **kwargs):
         kwargs['url'] = self.config['SERVER_URL'].strip('/') + '/api/v2/' + suffix.lstrip('/')
