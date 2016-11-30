@@ -113,10 +113,13 @@ class MediaServerClient:
         response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=600)
         return data['upload_id']
 
-    def add_media(self, title, file_path=None, **kwargs):
+    def add_media(self, title=None, file_path=None, **kwargs):
+        if not title and not file_path:
+            raise ValueError('You should give a title or a file to create a media.')
         metadata = kwargs
-        metadata['title'] = title
         metadata['origin'] = self.config['CLIENT_ID']
+        if title:
+            metadata['title'] = title
         if file_path:
             metadata['code'] = self.chunked_upload(file_path)
         response = self.api('medias/add/', method='post', data=metadata)
