@@ -150,4 +150,28 @@ if __name__ == '__main__':
     # print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
 
     # add user
-    # print(ms.api('users/add/', method='post', data={'email': 'test@test.com'}))
+    # print(msc.api('users/add/', method='post', data={'email': 'test@test.com'}))
+
+    # add users with csv file
+    # in this example, a line contains:
+    # Firstname;Lastname;Email;Company
+    '''
+    with open('users.csv', 'r') as f:
+        d = f.read()
+        for index, l in enumerate(d.split('\n')):
+            # Skip first line (contains header)
+            if l and index > 0:
+                fields = [f.strip() for f in l.split(';')]
+                user = {
+                    'email': fields[2],
+                    'first_name': fields[0],
+                    'last_name': fields[1],
+                    'company': fields[3],
+                    'username': "%s_%s" % (fields[0], fields[1]),
+                }
+                print('Adding %s' % user)
+                try:
+                    print(msc.api('users/add/', method='post', data=user))
+                except Exception as e:
+                    print('Error : %s' % e)
+    '''
