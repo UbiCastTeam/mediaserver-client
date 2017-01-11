@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Copyright 2016, Florent Thiery
+# Copyright 2017, Florent Thiery, Stéphane Diemer
 
 import hashlib
 import json
