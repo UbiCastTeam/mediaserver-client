@@ -168,6 +168,7 @@ if __name__ == '__main__':
                     'last_name': fields[1],
                     'company': fields[3],
                     'username': "%s_%s" % (fields[0], fields[1]),
+                    'is_active': 'true',
                 }
                 print('Adding %s' % user)
                 try:
