@@ -131,6 +131,35 @@ class MediaServerClient:
         response = self.api('medias/add/', method='post', data=metadata)
         return response
 
+    def import_users_csv(self, csv_path):
+        groupname = "Users imported from csv on %s" % time.ctime()
+        groupid = self.api('groups/add', method='post', data={'name': groupname}).get('id')
+        print('Created group %s with id %s' % (groupname, groupid))
+        with open(csv_path, 'r') as f:
+            d = f.read()
+            for index, l in enumerate(d.split('\n')):
+                # Skip first line (contains header)
+                if l and index > 0:
+                    fields = [f.strip() for f in l.split(';')]
+                    email = fields[2]
+                    user = {
+                        'email': email,
+                        'first_name': fields[0],
+                        'last_name': fields[1],
+                        'company': fields[3],
+                        'username': email,
+                        'is_active': 'true',
+                    }
+                    print('Adding %s' % email)
+                    try:
+                        print(self.api('users/add/', method='post', data=user))
+                    except Exception as e:
+                        print('Error : %s' % e)
+                    print('Adding user %s to group %s' %(email, groupname))
+                    try:
+                        print(self.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}))
+                    except Exception as e:
+                        print('Error : %s' % e)
 
 if __name__ == '__main__':
     log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'
@@ -152,36 +181,7 @@ if __name__ == '__main__':
     # add user
     # print(msc.api('users/add/', method='post', data={'email': 'test@test.com'}))
 
-    '''
     # add users with csv file; example file (header should be included):
     # Firstname;Lastname;Email;Company
     # Albert;Einstein;albert.einstein@test.com;Humanity
-    groupname = "Group created on %s" % time.ctime()
-    groupid = msc.api('groups/add', method='post', data={'name': groupname}).get('id')
-    print('Created group with id %s' % groupid)
-    with open('users.csv', 'r') as f:
-        d = f.read()
-        for index, l in enumerate(d.split('\n')):
-            # Skip first line (contains header)
-            if l and index > 0:
-                fields = [f.strip() for f in l.split(';')]
-                email = fields[2]
-                user = {
-                    'email': email,
-                    'first_name': fields[0],
-                    'last_name': fields[1],
-                    'company': fields[3],
-                    'username': email,
-                    'is_active': 'true',
-                }
-                print('Adding %s' % email)
-                try:
-                    print(msc.api('users/add/', method='post', data=user))
-                except Exception as e:
-                    print('Error : %s' % e)
-                print('Adding user %s to group %s' %(email, groupname))
-                try:
-                    print(msc.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}))
-                except Exception as e:
-                    print('Error : %s' % e)
-    '''
+    #msc.import_users_csv('users.csv')
