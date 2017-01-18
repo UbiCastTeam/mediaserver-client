@@ -152,29 +152,36 @@ if __name__ == '__main__':
     # add user
     # print(msc.api('users/add/', method='post', data={'email': 'test@test.com'}))
 
-    # add users with csv file
-    # in this example, a line contains:
-    # Firstname;Lastname;Email;Company
     '''
+    # add users with csv file; example file (header should be included):
+    # Firstname;Lastname;Email;Company
+    # Albert;Einstein;albert.einstein@test.com;Humanity
+    groupname = "Group created on %s" % time.ctime()
+    groupid = msc.api('groups/add', method='post', data={'name': groupname}).get('id')
+    print('Created group with id %s' % groupid)
     with open('users.csv', 'r') as f:
         d = f.read()
         for index, l in enumerate(d.split('\n')):
             # Skip first line (contains header)
             if l and index > 0:
                 fields = [f.strip() for f in l.split(';')]
+                email = fields[2]
                 user = {
-                    'email': fields[2],
+                    'email': email,
                     'first_name': fields[0],
                     'last_name': fields[1],
                     'company': fields[3],
-                    'username': "%s_%s" % (fields[0], fields[1]),
+                    'username': email,
                     'is_active': 'true',
                 }
-                print('Adding %s' % user)
+                print('Adding %s' % email)
                 try:
                     print(msc.api('users/add/', method='post', data=user))
                 except Exception as e:
                     print('Error : %s' % e)
+                print('Adding user %s to group %s' %(email, groupname))
+                try:
+                    print(msc.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}))
+                except Exception as e:
+                    print('Error : %s' % e)
     '''
-
-    #print(msc.api('groups/add', method='post', data={'name': 'test group'}))
