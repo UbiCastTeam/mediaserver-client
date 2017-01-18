@@ -85,7 +85,7 @@ class MediaServerClient:
         return response
 
     def api(self, suffix, *args, **kwargs):
-        kwargs['url'] = self.config['SERVER_URL'].strip('/') + '/api/v2/' + suffix.lstrip('/')
+        kwargs['url'] = self.config['SERVER_URL'].strip('/') + '/api/v2/' + suffix.strip('/') + '/'
         return self.request(*args, **kwargs)
 
     def chunked_upload(self, file_path):
@@ -176,3 +176,5 @@ if __name__ == '__main__':
                 except Exception as e:
                     print('Error : %s' % e)
     '''
+
+    #print(msc.api('groups/add', method='post', data={'name': 'test group'}))
