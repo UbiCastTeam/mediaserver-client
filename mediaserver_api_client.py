@@ -85,7 +85,7 @@ class MediaServerClient:
         return response
 
     def api(self, suffix, *args, **kwargs):
-        kwargs['url'] = self.config['SERVER_URL'].strip('/') + '/api/v2/' + suffix.strip('/') + '/'
+        kwargs['url'] = self.config['SERVER_URL'].strip('/') + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
         return self.request(*args, **kwargs)
 
     def chunked_upload(self, file_path):
@@ -155,7 +155,7 @@ class MediaServerClient:
                         print(self.api('users/add/', method='post', data=user))
                     except Exception as e:
                         print('Error : %s' % e)
-                    print('Adding user %s to group %s' %(email, groupname))
+                    print('Adding user %s to group %s' % (email, groupname))
                     try:
                         print(self.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}))
                     except Exception as e:
@@ -184,4 +184,4 @@ if __name__ == '__main__':
     # add users with csv file; example file (header should be included):
     # Firstname;Lastname;Email;Company
     # Albert;Einstein;albert.einstein@test.com;Humanity
-    #msc.import_users_csv('users.csv')
+    # msc.import_users_csv('users.csv')
