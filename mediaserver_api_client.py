@@ -49,7 +49,7 @@ class MediaServerClient:
         except Exception as e:
             logger.error('Error while parsing configuration file, using defaults (%s).', e)
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, json=True, timeout=10):
+    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=10):
         global session
         if session is None:
             session = requests.Session()
@@ -76,7 +76,7 @@ class MediaServerClient:
         req = req_function(**req_args)
         if req.status_code != 200:
             raise Exception('HTTP %s error on %s: %s' % (req.status_code, url, req.text))
-        if json:
+        if parse_json:
             response = req.json()
             if 'success' in response and not response['success']:
                 raise Exception('API call failed: %s' % (response.get('error', response.get('message', 'No information on error.'))))
@@ -160,6 +160,7 @@ class MediaServerClient:
                         print(self.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}))
                     except Exception as e:
                         print('Error : %s' % e)
+
 
 if __name__ == '__main__':
     log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'
