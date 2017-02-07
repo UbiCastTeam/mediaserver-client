@@ -128,7 +128,7 @@ class MediaServerClient:
             metadata['title'] = title
         if file_path:
             metadata['code'] = self.chunked_upload(file_path)
-        response = self.api('medias/add/', method='post', data=metadata)
+        response = self.api('medias/add/', method='post', data=metadata, timeout=600)
         return response
 
     def import_users_csv(self, csv_path):
