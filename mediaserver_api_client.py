@@ -131,6 +131,16 @@ class MediaServerClient:
         response = self.api('medias/add/', method='post', data=metadata, timeout=600)
         return response
 
+    def remove_all_content(self):
+        print('Remove all content')
+        channels = self.api('/channels/tree')['channels']
+        while msc.api('/channels/tree')['channels']:
+            for c in channels:
+                c_oid = c['oid']
+                msc.api('/channels/delete', method='post', data={'oid': c_oid, 'delete_content': 'yes'})
+                print('Emptied channel %s' % c_oid)
+            channels = msc.api('/channels/tree')['channels']
+
     def import_users_csv(self, csv_path):
         groupname = "Users imported from csv on %s" % time.ctime()
         groupid = self.api('groups/add', method='post', data={'name': groupname}).get('id')
@@ -173,8 +183,22 @@ if __name__ == '__main__':
     # ping
     print(msc.api('/', method='get'))
 
+    #d = msc.api('/lives/prepare', method='post')
+    #if d['success']:
+    #    oid = d['oid']
+    #    rtmp_uri = d['publish_uri']
+    #    print(oid, rtmp_uri)
+    #    print(msc.api('/lives/start', method='post', data={'oid': oid}))
+    #    print(msc.api('/lives/stop', method='post', data={'oid': oid}))
+
+    #def remove_all_users():
+    #    print('Remove all users')
+    #    users = msc.api('/users')['users']
+    #    for user in users:
+    #        msc.api('/users/delete', method='get', params={'id': user['id']})
+
     # add media with a video
-    # print(msc.add_media('Test multichunk upload mp4', file_path='/tmp/test.mp4', layout='webinar', detect_slide=['0_0-640_480-750']))
+    #print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', layout='webinar', detect_slide=['0_0-640_480-750']))
 
     # add media with a zip
     # print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
