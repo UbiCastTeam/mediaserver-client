@@ -197,8 +197,8 @@ if __name__ == '__main__':
     #    for user in users:
     #        msc.api('/users/delete', method='get', params={'id': user['id']})
 
-    # add media with a video
-    #print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', layout='webinar', detect_slide=['0_0-640_480-750']))
+    # add media with a video, make it published at once
+    #print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com'))
 
     # add media with a zip
     # print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
