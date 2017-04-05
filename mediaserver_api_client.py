@@ -79,7 +79,7 @@ class MediaServerClient:
         if parse_json:
             response = req.json()
             if 'success' in response and not response['success']:
-                raise Exception('API call failed: %s' % (response.get('error', response.get('message', 'No information on error.'))))
+                raise Exception('API call failed: %s' % (response.get('errors', response.get('error', response.get('message', 'No information on error.')))))
         else:
             response = req.text.strip()
         return response
@@ -202,6 +202,7 @@ if __name__ == '__main__':
 
     # add media with a zip
     # print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
+    #print(msc.add_media('Test', file_path='test.mp4'))
 
     # add user
     # print(msc.api('users/add/', method='post', data={'email': 'test@test.com'}))
@@ -210,3 +211,10 @@ if __name__ == '__main__':
     # Firstname;Lastname;Email;Company
     # Albert;Einstein;albert.einstein@test.com;Humanity
     # msc.import_users_csv('users.csv')
+
+    #print(msc.api('annotations/post', params={'oid': 'v125849d470d7v92kvtc', 'time': 1000,}))
+    #print(msc.api('annotations/chapters/list', params={'oid': 'v125849d470d7v92kvtc'}))
+    #annotations = msc.api('annotations/types/list', params={'oid': 'v125849d470d7v92kvtc'})
+    #for a in annotations['types']:
+    #    if a['slug'] == 'chapter':
+    #        print(a['id'])
