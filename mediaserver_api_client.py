@@ -200,6 +200,14 @@ if __name__ == '__main__':
     # add media with a video, make it published at once
     #print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com'))
 
+    # create user personal channel
+    # upload into it
+    #personal_channel_oid = msc.api('/channels/personal/', method='get', params={'email': 'test@test.com'}).get('oid')
+    # sample response {'slug': 'testtestcom_05881', 'oid': 'c125855df7d36iudslp3', 'dbid': 113, 'title': 'test@test.com', 'success': True}
+    #if personal_channel_oid:
+    #    print('Uploading to personal channel %s' % personal_channel_oid)
+    #    print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com', channel=personal_channel_oid))
+
     # add media with a zip
     # print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
     #print(msc.add_media('Test', file_path='test.mp4'))
