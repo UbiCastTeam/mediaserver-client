@@ -88,7 +88,7 @@ class MediaServerClient:
         kwargs['url'] = self.config['SERVER_URL'].strip('/') + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
         return self.request(*args, **kwargs)
 
-    def chunked_upload(self, file_path):
+    def chunked_upload(self, file_path, progress_callback=None):
         chunk_size = self.config['UPLOAD_CHUNK_SIZE']
         total_size = os.path.getsize(file_path)
         chunks_count = math.ceil(total_size / chunk_size)
@@ -109,6 +109,8 @@ class MediaServerClient:
                 files = {'file': (os.path.basename(file_path), chunk)}
                 headers = {'Content-Range': 'bytes %s-%s/%s' % (start_offset, end_offset, total_size)}
                 response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers)
+                if progress_callback:
+                    progress_callback(end_offset / total_size)
                 if 'upload_id' not in data:
                     data['upload_id'] = response['upload_id']
                 start_offset += chunk_size
@@ -119,7 +121,7 @@ class MediaServerClient:
         response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=600)
         return data['upload_id']
 
-    def add_media(self, title=None, file_path=None, **kwargs):
+    def add_media(self, title=None, file_path=None, progress_callback=None, **kwargs):
         if not title and not file_path:
             raise ValueError('You should give a title or a file to create a media.')
         metadata = kwargs
@@ -127,7 +129,7 @@ class MediaServerClient:
         if title:
             metadata['title'] = title
         if file_path:
-            metadata['code'] = self.chunked_upload(file_path)
+            metadata['code'] = self.chunked_upload(file_path, progress_callback=progress_callback)
         response = self.api('medias/add/', method='post', data=metadata, timeout=600)
         return response
 
@@ -150,7 +152,7 @@ class MediaServerClient:
             for index, l in enumerate(d.split('\n')):
                 # Skip first line (contains header)
                 if l and index > 0:
-                    fields = [f.strip() for f in l.split(';')]
+                    fields = [field.strip() for field in l.split(';')]
                     email = fields[2]
                     user = {
                         'email': email,
