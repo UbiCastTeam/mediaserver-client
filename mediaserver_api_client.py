@@ -211,7 +211,9 @@ if __name__ == '__main__':
     #    print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com', channel=personal_channel_oid))
 
     # add media with a zip
-    # print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
+    #print(msc.add_media(file_path='/tmp/test.zip'))
+
+    # add media from mp4 file
     #print(msc.add_media('Test', file_path='test.mp4'))
 
     # add user
