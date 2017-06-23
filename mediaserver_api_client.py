@@ -28,6 +28,119 @@ CONFIG_DEFAULT = {
 
 
 class MediaServerClient:
+    '''
+        Mediaserver api client
+
+        There is some examples:
+
+        Start/Stop a live
+        #################
+
+        .. code-block:: python
+
+            d = msc.api('/lives/prepare', method='post')
+            if d['success']:
+                oid = d['oid']
+                rtmp_uri = d['publish_uri']
+
+                print(oid, rtmp_uri)
+
+                print(msc.api('/lives/start', method='post', data={'oid': oid}))
+
+                print(msc.api('/lives/stop', method='post', data={'oid': oid}))
+
+        Remove all users function
+        #########################
+
+        .. code-block:: python
+
+            def remove_all_users():
+                print('Remove all users')
+                users = msc.api('/users')['users']
+
+                for user in users:
+                    msc.api('/users/delete', method='get', params={'id': user['id']})
+
+        Add media with a video, make it published at once
+        #################################################
+
+        .. code-block:: python
+
+            print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com'))
+
+        Create user personal channel and upload into it
+        ###############################################
+
+        .. code-block:: python
+
+            personal_channel_oid = msc.api('/channels/personal/', method='get', params={'email': 'test@test.com'}).get('oid')
+
+            respone_like = {
+                'slug': 'testtestcom_05881',
+                'oid': 'c125855df7d36iudslp3',
+                'dbid': 113,
+                'title': 'test@test.com',
+                'success': True
+            }
+            if personal_channel_oid:
+                print('Uploading to personal channel %s' % personal_channel_oid)
+
+                print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com', channel=personal_channel_oid))
+
+        Add media with a zip
+        ####################
+
+        .. code-block:: python
+
+            print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
+            print(msc.add_media(file_path='test.mp4'))
+
+        Add user
+        ########
+
+        .. code-block:: python
+
+            print(msc.api('users/add/', method='post', data={'email': 'test@test.com'}))
+
+        Add users with csv file; example file (header should be included):
+        ##################################################################
+
+        users.csv :
+
+        .. code-block:: csv
+
+            Firstname;Lastname;Email;Company
+            Albert;Einstein;albert.einstein@test.com;Humanity
+
+        .. code-block:: python
+
+            msc.import_users_csv('users.csv')
+
+        # Usage examples of annotation api
+        ##################################
+
+        POST
+
+        .. code-block:: python
+
+            print(msc.api('annotations/post', params={'oid': 'v125849d470d7v92kvtc', 'time': 1000,}))
+
+        Get Chapters
+
+        .. code-block:: python
+
+            print(msc.api('annotations/chapters/list', params={'oid': 'v125849d470d7v92kvtc'}))
+
+        Get types list and print chapters id
+
+        .. code-block:: python
+
+            response = msc.api('annotations/types/list', params={'oid': 'v125849d470d7v92kvtc'})
+            for a in response['types']:
+                if a['slug'] == 'chapter':
+                    print(a['id'])
+
+    '''
     def __init__(self, config_path=None):
         self.config = CONFIG_DEFAULT.copy()
         self.config_path = config_path or 'config.json'
@@ -184,49 +297,3 @@ if __name__ == '__main__':
     msc = MediaServerClient(config_path)
     # ping
     print(msc.api('/', method='get'))
-
-    #d = msc.api('/lives/prepare', method='post')
-    #if d['success']:
-    #    oid = d['oid']
-    #    rtmp_uri = d['publish_uri']
-    #    print(oid, rtmp_uri)
-    #    print(msc.api('/lives/start', method='post', data={'oid': oid}))
-    #    print(msc.api('/lives/stop', method='post', data={'oid': oid}))
-
-    #def remove_all_users():
-    #    print('Remove all users')
-    #    users = msc.api('/users')['users']
-    #    for user in users:
-    #        msc.api('/users/delete', method='get', params={'id': user['id']})
-
-    # add media with a video, make it published at once
-    #print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com'))
-
-    # create user personal channel
-    # upload into it
-    #personal_channel_oid = msc.api('/channels/personal/', method='get', params={'email': 'test@test.com'}).get('oid')
-    # sample response {'slug': 'testtestcom_05881', 'oid': 'c125855df7d36iudslp3', 'dbid': 113, 'title': 'test@test.com', 'success': True}
-    #if personal_channel_oid:
-    #    print('Uploading to personal channel %s' % personal_channel_oid)
-    #    print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com', channel=personal_channel_oid))
-
-    # add media with a zip
-    #print(msc.add_media(file_path='/tmp/test.zip'))
-
-    # add media from mp4 file
-    #print(msc.add_media('Test', file_path='test.mp4'))
-
-    # add user
-    # print(msc.api('users/add/', method='post', data={'email': 'test@test.com'}))
-
-    # add users with csv file; example file (header should be included):
-    # Firstname;Lastname;Email;Company
-    # Albert;Einstein;albert.einstein@test.com;Humanity
-    # msc.import_users_csv('users.csv')
-
-    #print(msc.api('annotations/post', params={'oid': 'v125849d470d7v92kvtc', 'time': 1000,}))
-    #print(msc.api('annotations/chapters/list', params={'oid': 'v125849d470d7v92kvtc'}))
-    #annotations = msc.api('annotations/types/list', params={'oid': 'v125849d470d7v92kvtc'})
-    #for a in annotations['types']:
-    #    if a['slug'] == 'chapter':
-    #        print(a['id'])
