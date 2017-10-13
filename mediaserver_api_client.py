@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2017, Florent Thiery, Stéphane Diemer
+# Source file:
+# https://github.com/UbiCastTeam/mediaserver-client/blob/master/mediaserver_api_client.py
 
 import hashlib
 import json
@@ -13,15 +15,12 @@ import time
 
 logger = logging.getLogger('mediaserver_client')
 
-MiB = 1024 * 1024
-session = None
-
 # Do not edit this directly, create a config.json file instead
 CONFIG_DEFAULT = {
     'SERVER_URL': 'https://my.mediaserver.net',
     'API_KEY': 'my-api-key',
     'PROXIES': {'http': '', 'https': ''},
-    'UPLOAD_CHUNK_SIZE': 5 * MiB,
+    'UPLOAD_CHUNK_SIZE': 5 * 1024 * 1024,  # 5 MiB
     'VERIFY_SSL': False,
     'CLIENT_ID': 'python-api-client',
 }
@@ -66,7 +65,7 @@ class MediaServerClient:
 
         .. code-block:: python
 
-            print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com'))
+            print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated='yes', speaker_email='user@domain.com'))
 
         Create user personal channel and upload into it
         ###############################################
@@ -85,7 +84,7 @@ class MediaServerClient:
             if personal_channel_oid:
                 print('Uploading to personal channel %s' % personal_channel_oid)
 
-                print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated="yes", speaker_email='user@domain.com', channel=personal_channel_oid))
+                print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated='yes', speaker_email='user@domain.com', channel=personal_channel_oid))
 
         Add media with a zip
         ####################
@@ -141,11 +140,12 @@ class MediaServerClient:
                     print(a['id'])
 
     '''
-    def __init__(self, config_path=None):
+    def __init__(self, config_path=None, config_dict=None):
+        self.session = None
         self.config = CONFIG_DEFAULT.copy()
-        self.config_path = config_path or 'config.json'
-        if os.path.exists(self.config_path):
-            self.load_config()
+        self.load_config(config_path)
+        if config_dict:
+            self.update_config(config_dict)
         if not self.config['VERIFY_SSL']:
             from requests.packages.urllib3.exceptions import InsecureRequestWarning
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -154,54 +154,69 @@ class MediaServerClient:
         with open(self.config_path, 'w') as fo:
             json.dump(self.config, fo, sort_keys=True, indent=4, separators=(',', ': '))
 
-    def load_config(self):
-        logger.debug('Reading %s', self.config_path)
-        try:
-            with open(self.config_path, 'r') as fo:
-                self.config.update(json.load(fo))
-        except Exception as e:
-            logger.error('Error while parsing configuration file, using defaults (%s).', e)
+    def load_config(self, path=None):
+        self.config_path = path or 'config.json'
+        if os.path.exists(self.config_path):
+            logger.debug('Reading configuration file "%s".', self.config_path)
+            try:
+                with open(self.config_path, 'r') as fo:
+                    self.config.update(json.load(fo))
+            except Exception as e:
+                logger.error('Error while parsing configuration file, using defaults (%s).', e)
+        else:
+            logger.debug('Configuration file "%s" does not exist.', self.config_path)
+        self.check_config()
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=10):
-        global session
-        if session is None:
-            session = requests.Session()
+    def update_config(self, data):
+        if not isinstance(data, dict):
+            raise TypeError('A dict is required to update the configuration (received a %s object).' % type(data))
+        self.config.update(data)
+        self.check_config()
+
+    def check_config(self):
+        self.config['SERVER_URL'] = self.config['SERVER_URL'].strip('/')
+
+    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=10, ignore_404=False):
+        if self.session is None:
+            self.session = requests.Session()
 
         if method == 'get':
-            req_function = session.get
+            req_function = self.session.get
             params = params or dict()
             params['api_key'] = self.config['API_KEY']
         else:
-            req_function = session.post
+            req_function = self.session.post
             data = data or dict()
             data['api_key'] = self.config['API_KEY']
 
-        req_args = {
-            'url': url,
-            'headers': headers,
-            'params': params,
-            'data': data,
-            'files': files,
-            'timeout': timeout,
-            'proxies': self.config['PROXIES'],
-            'verify': self.config['VERIFY_SSL'],
-        }
-        req = req_function(**req_args)
+        req = req_function(
+            url=url,
+            headers=headers,
+            params=params,
+            data=data,
+            files=files,
+            timeout=timeout,
+            proxies=self.config['PROXIES'],
+            verify=self.config['VERIFY_SSL'],
+        )
+        if req.status_code == 404 and ignore_404:
+            logger.info('404 ignored on url %s.' % url)
+            return None
         if req.status_code != 200:
             raise Exception('HTTP %s error on %s: %s' % (req.status_code, url, req.text))
         if parse_json:
             response = req.json()
             if 'success' in response and not response['success']:
-                raise Exception('API call failed: %s' % (response.get('errors', response.get('error', response.get('message', 'No information on error.')))))
+                raise Exception('API call failed: %s' % (response.get('error', response.get('errors', response.get('message', 'No information on error.')))))
         else:
             response = req.text.strip()
         return response
 
     def api(self, suffix, *args, **kwargs):
-        kwargs['url'] = self.config['SERVER_URL'].strip('/') + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
+        kwargs['url'] = self.config['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
         return self.request(*args, **kwargs)
 
-    def chunked_upload(self, file_path, progress_callback=None):
+    def chunked_upload(self, file_path, remote_path=None, progress_callback=None, progress_data=None):
         chunk_size = self.config['UPLOAD_CHUNK_SIZE']
         total_size = os.path.getsize(file_path)
         chunks_count = math.ceil(total_size / chunk_size)
@@ -223,7 +238,8 @@ class MediaServerClient:
                 headers = {'Content-Range': 'bytes %s-%s/%s' % (start_offset, end_offset, total_size)}
                 response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers)
                 if progress_callback:
-                    progress_callback(end_offset / total_size)
+                    pdata = progress_data or dict()
+                    progress_callback(end_offset / total_size, **pdata)
                 if 'upload_id' not in data:
                     data['upload_id'] = response['upload_id']
                 start_offset += chunk_size
@@ -231,6 +247,8 @@ class MediaServerClient:
         bandwidth = total_size * 8 / ((time.time() - begin) * 1000000)
         logger.debug('Upload finished, average bandwidth: %.2f Mbits/s', bandwidth)
         data['md5'] = md5sum.hexdigest()
+        if remote_path:
+            data['path'] = remote_path
         response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=600)
         return data['upload_id']
 
@@ -247,19 +265,19 @@ class MediaServerClient:
         return response
 
     def remove_all_content(self):
-        print('Remove all content')
-        channels = self.api('/channels/tree')['channels']
-        while msc.api('/channels/tree')['channels']:
+        logger.info('Remove all content')
+        channels = self.api('channels/tree/')['channels']
+        while msc.api('channels/tree')['channels']:
             for c in channels:
                 c_oid = c['oid']
-                msc.api('/channels/delete', method='post', data={'oid': c_oid, 'delete_content': 'yes'})
-                print('Emptied channel %s' % c_oid)
-            channels = msc.api('/channels/tree')['channels']
+                msc.api('channels/delete/', method='post', data={'oid': c_oid, 'delete_content': 'yes'})
+                logger.info('Emptied channel %s' % c_oid)
+            channels = msc.api('channels/tree/')['channels']
 
     def import_users_csv(self, csv_path):
-        groupname = "Users imported from csv on %s" % time.ctime()
-        groupid = self.api('groups/add', method='post', data={'name': groupname}).get('id')
-        print('Created group %s with id %s' % (groupname, groupid))
+        groupname = 'Users imported from csv on %s' % time.ctime()
+        groupid = self.api('groups/add/', method='post', data={'name': groupname}).get('id')
+        logger.info('Created group %s with id %s' % (groupname, groupid))
         with open(csv_path, 'r') as f:
             d = f.read()
             for index, l in enumerate(d.split('\n')):
@@ -275,16 +293,16 @@ class MediaServerClient:
                         'username': email,
                         'is_active': 'true',
                     }
-                    print('Adding %s' % email)
+                    logger.info('Adding %s' % email)
                     try:
-                        print(self.api('users/add/', method='post', data=user))
+                        logger.info(self.api('users/add/', method='post', data=user))
                     except Exception as e:
-                        print('Error : %s' % e)
-                    print('Adding user %s to group %s' % (email, groupname))
+                        logger.error('Error : %s' % e)
+                    logger.info('Adding user %s to group %s' % (email, groupname))
                     try:
-                        print(self.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}))
+                        logger.info(self.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}))
                     except Exception as e:
-                        print('Error : %s' % e)
+                        logger.error('Error : %s' % e)
 
 
 if __name__ == '__main__':
@@ -296,4 +314,4 @@ if __name__ == '__main__':
     config_path = sys.argv[1] if len(sys.argv) > 1 else None
     msc = MediaServerClient(config_path)
     # ping
-    print(msc.api('/', method='get'))
+    print(msc.api('/'))
