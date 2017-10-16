@@ -214,7 +214,21 @@ class MediaServerClient:
 
     def api(self, suffix, *args, **kwargs):
         kwargs['url'] = self.config['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
-        return self.request(*args, **kwargs)
+        max_retry = kwargs.pop('max_retry', None)
+        if max_retry:
+            retry_count = 0
+            while True:
+                try:
+                    return self.request(*args, **kwargs)
+                except Exception as e:
+                    if retry_count >= max_retry:
+                        raise
+                    else:
+                        retry_count += 1
+                        logger.error('Request on %s failed (tried %s times): %s', suffix, retry_count, e)
+                        time.sleep(3 * retry_count * retry_count)
+        else:
+            return self.request(*args, **kwargs)
 
     def chunked_upload(self, file_path, remote_path=None, progress_callback=None, progress_data=None):
         chunk_size = self.config['UPLOAD_CHUNK_SIZE']
@@ -232,11 +246,11 @@ class MediaServerClient:
                 if not chunk:
                     break
                 chunk_index += 1
-                logger.debug('Uploading chunk [%s/%s]', chunk_index, chunks_count)
+                logger.debug('Uploading chunk %s/%s.', chunk_index, chunks_count)
                 md5sum.update(chunk)
                 files = {'file': (os.path.basename(file_path), chunk)}
                 headers = {'Content-Range': 'bytes %s-%s/%s' % (start_offset, end_offset, total_size)}
-                response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers)
+                response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers, max_retry=5)
                 if progress_callback:
                     pdata = progress_data or dict()
                     progress_callback(end_offset / total_size, **pdata)
@@ -249,7 +263,7 @@ class MediaServerClient:
         data['md5'] = md5sum.hexdigest()
         if remote_path:
             data['path'] = remote_path
-        response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=600)
+        response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=600, max_retry=5)
         return data['upload_id']
 
     def add_media(self, title=None, file_path=None, progress_callback=None, **kwargs):
