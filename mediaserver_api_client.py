@@ -250,7 +250,7 @@ class MediaServerClient:
                 md5sum.update(chunk)
                 files = {'file': (os.path.basename(file_path), chunk)}
                 headers = {'Content-Range': 'bytes %s-%s/%s' % (start_offset, end_offset, total_size)}
-                response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers, max_retry=5)
+                response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers, timeout=3600, max_retry=5)
                 if progress_callback:
                     pdata = progress_data or dict()
                     progress_callback(end_offset / total_size, **pdata)
@@ -263,7 +263,7 @@ class MediaServerClient:
         data['md5'] = md5sum.hexdigest()
         if remote_path:
             data['path'] = remote_path
-        response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=600, max_retry=5)
+        response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=3600, max_retry=5)
         return data['upload_id']
 
     def add_media(self, title=None, file_path=None, progress_callback=None, **kwargs):
@@ -275,7 +275,7 @@ class MediaServerClient:
             metadata['title'] = title
         if file_path:
             metadata['code'] = self.chunked_upload(file_path, progress_callback=progress_callback)
-        response = self.api('medias/add/', method='post', data=metadata, timeout=600)
+        response = self.api('medias/add/', method='post', data=metadata, timeout=3600)
         return response
 
     def remove_all_content(self):
