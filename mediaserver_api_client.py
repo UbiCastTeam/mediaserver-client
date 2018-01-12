@@ -17,7 +17,7 @@ logger = logging.getLogger('mediaserver_client')
 
 # Do not edit this directly, create a config.json file instead
 CONFIG_DEFAULT = {
-    'SERVER_URL': 'https://my.mediaserver.net',
+    'SERVER_URL': 'https://mediaserver.example.com',
     'API_KEY': 'my-api-key',
     'PROXIES': {'http': '', 'https': ''},
     'UPLOAD_CHUNK_SIZE': 5 * 1024 * 1024,  # 5 MiB
