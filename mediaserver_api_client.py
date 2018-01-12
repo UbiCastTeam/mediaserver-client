@@ -166,6 +166,7 @@ class MediaServerClient:
         else:
             logger.debug('Configuration file "%s" does not exist.', self.config_path)
         self.check_config()
+        self.check_server()
 
     def update_config(self, data):
         if not isinstance(data, dict):
@@ -175,6 +176,9 @@ class MediaServerClient:
 
     def check_config(self):
         self.config['SERVER_URL'] = self.config['SERVER_URL'].strip('/')
+
+    def check_server(self):
+        self.api('/', timeout=5)
 
     def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=10, ignore_404=False):
         if self.session is None:
