@@ -1,11 +1,11 @@
 {
-    "API_KEY": "my-api-key",
+    "SERVER_URL": "https://mediaserver.example.com",
+    "API_KEY": "the-api-key",
     "CLIENT_ID": "python-api-client",
     "PROXIES": {
         "http": "",
         "https": ""
     },
-    "SERVER_URL": "https://my.mediaserver.net",
     "UPLOAD_CHUNK_SIZE": 5242880,
     "VERIFY_SSL": false
 }

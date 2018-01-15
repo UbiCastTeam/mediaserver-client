@@ -18,7 +18,7 @@ logger = logging.getLogger('mediaserver_client')
 # Do not edit this directly, create a config.json file instead
 CONFIG_DEFAULT = {
     'SERVER_URL': 'https://mediaserver.example.com',
-    'API_KEY': 'my-api-key',
+    'API_KEY': 'the-api-key',
     'PROXIES': {'http': '', 'https': ''},
     'UPLOAD_CHUNK_SIZE': 5 * 1024 * 1024,  # 5 MiB
     'VERIFY_SSL': False,
@@ -143,6 +143,7 @@ class MediaServerClient:
     def __init__(self, config_path=None, config_dict=None):
         self.session = None
         self.config = CONFIG_DEFAULT.copy()
+        self.config_checked = False
         self.load_config(config_path)
         if config_dict:
             self.update_config(config_dict)
@@ -164,18 +165,28 @@ class MediaServerClient:
             except Exception as e:
                 logger.error('Error while parsing configuration file, using defaults (%s).', e)
         else:
-            logger.debug('Configuration file "%s" does not exist.', self.config_path)
-        self.check_config()
-        self.check_server()
+            error = 'Configuration file "%s" does not exist.' % self.config_path
+            if path:
+                logger.error(error)
+                raise Exception(error)
+            logger.debug(error)
 
     def update_config(self, data):
         if not isinstance(data, dict):
             raise TypeError('A dict is required to update the configuration (received a %s object).' % type(data))
         self.config.update(data)
-        self.check_config()
+        self.config_checked = False
 
     def check_config(self):
+        # check that the MediaServer url is set
+        if self.config_checked:
+            return
+        if self.config['SERVER_URL'] == CONFIG_DEFAULT['SERVER_URL']:
+            raise ValueError('The value of SERVER_URL is using the default value. Please configure it.')
         self.config['SERVER_URL'] = self.config['SERVER_URL'].strip('/')
+        if self.config['API_KEY'] == CONFIG_DEFAULT['API_KEY']:
+            raise ValueError('The value of API_KEY is using the default value. Please configure it.')
+        self.config_checked = True
 
     def check_server(self):
         self.api('/', timeout=5)
@@ -217,6 +228,8 @@ class MediaServerClient:
         return response
 
     def api(self, suffix, *args, **kwargs):
+        self.check_config()
+
         kwargs['url'] = self.config['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
         max_retry = kwargs.pop('max_retry', None)
         if max_retry:
@@ -273,6 +286,7 @@ class MediaServerClient:
     def add_media(self, title=None, file_path=None, progress_callback=None, **kwargs):
         if not title and not file_path:
             raise ValueError('You should give a title or a file to create a media.')
+        self.check_server()
         metadata = kwargs
         metadata['origin'] = self.config['CLIENT_ID']
         if title:
