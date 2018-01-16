@@ -238,7 +238,8 @@ class MediaServerClient:
                 try:
                     return self.request(*args, **kwargs)
                 except Exception as e:
-                    if retry_count >= max_retry:
+                    # do not retry when getting a 40X error
+                    if retry_count >= max_retry or 'HTTP 40' in str(e):
                         raise
                     else:
                         retry_count += 1
