@@ -230,13 +230,15 @@ class MediaServerClient:
     def api(self, suffix, *args, **kwargs):
         self.check_config()
 
+        begin = time.time()
         kwargs['url'] = self.config['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
         max_retry = kwargs.pop('max_retry', None)
         if max_retry:
             retry_count = 0
             while True:
                 try:
-                    return self.request(*args, **kwargs)
+                    result = self.request(*args, **kwargs)
+                    break
                 except Exception as e:
                     # do not retry when getting a 40X error
                     if retry_count >= max_retry or 'HTTP 40' in str(e):
@@ -246,9 +248,11 @@ class MediaServerClient:
                         logger.error('Request on %s failed (tried %s times): %s', suffix, retry_count, e)
                         time.sleep(3 * retry_count * retry_count)
         else:
-            return self.request(*args, **kwargs)
+            result = self.request(*args, **kwargs)
+        logger.debug('API call duration: %.2f s - %s', time.time() - begin, suffix)
+        return result
 
-    def chunked_upload(self, file_path, remote_path=None, progress_callback=None, progress_data=None):
+    def chunked_upload(self, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True):
         chunk_size = self.config['UPLOAD_CHUNK_SIZE']
         total_size = os.path.getsize(file_path)
         chunks_count = math.ceil(total_size / chunk_size)
@@ -256,7 +260,8 @@ class MediaServerClient:
         start_offset = 0
         end_offset = min(chunk_size, total_size) - 1
         data = dict()
-        md5sum = hashlib.md5()
+        if check_md5:
+            md5sum = hashlib.md5()
         begin = time.time()
         with open(file_path, 'rb') as file_object:
             while True:
@@ -265,7 +270,8 @@ class MediaServerClient:
                     break
                 chunk_index += 1
                 logger.debug('Uploading chunk %s/%s.', chunk_index, chunks_count)
-                md5sum.update(chunk)
+                if check_md5:
+                    md5sum.update(chunk)
                 files = {'file': (os.path.basename(file_path), chunk)}
                 headers = {'Content-Range': 'bytes %s-%s/%s' % (start_offset, end_offset, total_size)}
                 response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers, timeout=3600, max_retry=5)
@@ -278,7 +284,10 @@ class MediaServerClient:
                 end_offset = min(end_offset + chunk_size, total_size - 1)
         bandwidth = total_size * 8 / ((time.time() - begin) * 1000000)
         logger.debug('Upload finished, average bandwidth: %.2f Mbits/s', bandwidth)
-        data['md5'] = md5sum.hexdigest()
+        if check_md5:
+            data['md5'] = md5sum.hexdigest()
+        else:
+            data['no_md5'] = 'yes'
         if remote_path:
             data['path'] = remote_path
         response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=3600, max_retry=5)
