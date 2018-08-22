@@ -23,6 +23,7 @@ CONFIG_DEFAULT = {
     'UPLOAD_CHUNK_SIZE': 5 * 1024 * 1024,  # 5 MiB
     'VERIFY_SSL': False,
     'CLIENT_ID': 'python-api-client',
+    'USE_SESSION': True,
 }
 
 
@@ -192,15 +193,15 @@ class MediaServerClient:
         self.api('/', timeout=5)
 
     def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=10, ignore_404=False):
-        if self.session is None:
+        if self.session is None and self.config['USE_SESSION']:
             self.session = requests.Session()
 
         if method == 'get':
-            req_function = self.session.get
+            req_function = self.session.get if self.session is not None else requests.get
             params = params or dict()
             params['api_key'] = self.config['API_KEY']
         else:
-            req_function = self.session.post
+            req_function = self.session.post if self.session is not None else requests.post
             data = data or dict()
             data['api_key'] = self.config['API_KEY']
 
