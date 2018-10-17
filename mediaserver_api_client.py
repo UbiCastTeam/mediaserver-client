@@ -193,7 +193,7 @@ class MediaServerClient:
         self.api('/', timeout=5)
 
     def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=10, ignore_404=False):
-        if self.session is None and self.config['USE_SESSION']:
+        if self.session is None and self.config.get('USE_SESSION', True):
             self.session = requests.Session()
 
         if method == 'get':
