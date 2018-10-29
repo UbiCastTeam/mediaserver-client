@@ -278,7 +278,7 @@ class MediaServerClient:
                 response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers, timeout=3600, max_retry=5)
                 if progress_callback:
                     pdata = progress_data or dict()
-                    progress_callback(end_offset / total_size, **pdata)
+                    progress_callback(0.9 * end_offset / total_size, **pdata)
                 if 'upload_id' not in data:
                     data['upload_id'] = response['upload_id']
                 start_offset += chunk_size
@@ -292,9 +292,12 @@ class MediaServerClient:
         if remote_path:
             data['path'] = remote_path
         response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=3600, max_retry=5)
+        if progress_callback:
+            pdata = progress_data or dict()
+            progress_callback(1., **pdata)
         return data['upload_id']
 
-    def add_media(self, title=None, file_path=None, progress_callback=None, **kwargs):
+    def add_media(self, title=None, file_path=None, progress_callback=None, progress_data=None, **kwargs):
         if not title and not file_path:
             raise ValueError('You should give a title or a file to create a media.')
         self.check_server()
@@ -303,7 +306,7 @@ class MediaServerClient:
         if title:
             metadata['title'] = title
         if file_path:
-            metadata['code'] = self.chunked_upload(file_path, progress_callback=progress_callback)
+            metadata['code'] = self.chunked_upload(file_path, progress_callback=progress_callback, progress_data=progress_data)
         response = self.api('medias/add/', method='post', data=metadata, timeout=3600)
         return response
 
