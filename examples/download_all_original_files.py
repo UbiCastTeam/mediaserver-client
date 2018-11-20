@@ -15,14 +15,10 @@ import sys
 
 
 if __name__ == '__main__':
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from mediaserver_api_client import MediaServerClient
 
-    msc = MediaServerClient(config_dict=dict(
-        SERVER_URL='https://mediaserver',
-        API_KEY='',
-        VERIFY_SSL=False,
-    ))
+    msc = MediaServerClient()
     msc.check_server()
 
     dir_path = 'videos'
