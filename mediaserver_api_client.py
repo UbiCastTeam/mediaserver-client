@@ -295,6 +295,9 @@ class MediaServerClient:
                     data[os.path.basename(path)] = str(size)
                     files[os.path.basename(path)] = open(path, 'rb')
                 response = self.api('upload/hls/', method='post', data=data, files=files, timeout=3600, max_retry=5)
+                if progress_callback:
+                    pdata = progress_data or dict()
+                    progress_callback(total_files_count / len(ts_fragments), **pdata)
                 files_list = list()
                 files_size = 0
                 if not remote_dir:
@@ -313,6 +316,9 @@ class MediaServerClient:
         self.api('upload/hls/', method='post', data=data, files=files, timeout=3600, max_retry=5)
         bandwidth = total_size * 8 / ((time.time() - begin) * 1000000)
         logger.info('Upload finished (%s files in "%s"), average bandwidth: %.2f Mbits/s', total_files_count, remote_dir, bandwidth)
+        if progress_callback:
+            pdata = progress_data or dict()
+            progress_callback(1., **pdata)
         return remote_dir
 
     def chunked_upload(self, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True):
