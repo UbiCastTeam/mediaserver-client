@@ -149,8 +149,8 @@ class MediaServerClient:
         if config_dict:
             self.update_config(config_dict)
         if not self.config['VERIFY_SSL']:
-            from requests.packages.urllib3.exceptions import InsecureRequestWarning
-            requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def save_config(self):
         with open(self.config_path, 'w') as fo:
@@ -416,7 +416,7 @@ class MediaServerClient:
 if __name__ == '__main__':
     log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'
     logging.basicConfig(level=logging.DEBUG, format=log_format)
-    urllib3_logger = logging.getLogger('requests.packages.urllib3')
+    urllib3_logger = logging.getLogger('urllib3')
     urllib3_logger.setLevel(logging.WARNING)
 
     config_path = sys.argv[1] if len(sys.argv) > 1 else None
