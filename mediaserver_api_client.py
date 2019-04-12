@@ -223,7 +223,8 @@ class MediaServerClient:
         if parse_json:
             response = req.json()
             if 'success' in response and not response['success']:
-                raise Exception('API call failed: %s' % (response.get('error', response.get('errors', response.get('message', 'No information on error.')))))
+                error_message = response.get('error') or response.get('errors') or response.get('message') or 'No information on error.'
+                raise Exception('API call failed: %s' % error_message)
         else:
             response = req.text.strip()
         return response
@@ -253,6 +254,67 @@ class MediaServerClient:
         logger.debug('API call duration: %.2f s - %s', time.time() - begin, suffix)
         return result
 
+    def hls_upload(self, m3u8_path, remote_dir='', progress_callback=None, progress_data=None):
+        '''
+        Method to upload an HLS video (m3u8 + ts fragments).
+        This method is faster than "chunked_upload" because "chunked_upload" is very slow for a large number of tiny files.
+        The directory containing ts files must have the same name as the m3u8 file.
+        '''
+        if not os.path.isfile(m3u8_path):
+            raise ValueError('The given m3u8 file "%s" does not exist.' % m3u8_path)
+        ts_dir = '.'.join(m3u8_path.split('.')[:-1])
+        if not os.path.isdir(ts_dir):
+            raise ValueError('The ts directory "%s" of the m3u8 file "%s" does not exist.' % (ts_dir, m3u8_path))
+        remote_dir = remote_dir.strip(' \t\n\r/\\')
+        remote_name = os.path.basename(ts_dir)
+        # Send ts fragments
+        max_size = self.config['UPLOAD_CHUNK_SIZE']
+        files_list = list()
+        files_size = 0
+        total_size = 0
+        total_files_count = 1
+        ts_fragments = os.listdir(ts_dir)
+        ts_fragments.sort()
+        begin = time.time()
+        for name in ts_fragments:
+            ts_path = os.path.join(ts_dir, name)
+            if not os.path.isfile(ts_path):
+                logger.warning('Found a non file object in the ts fragments dir "%s". The object will be ignored.')
+                continue
+            size = os.path.getsize(ts_path)
+            files_size += size
+            files_list.append((ts_path, size))
+            total_files_count += 1
+            if files_size > max_size:
+                # Send files in list
+                logger.info('Uploading %s files (%.2f MiB, only fragments) of "%s" in one request.', len(files_list), files_size / (1024 ** 2), ts_dir)
+                total_size += files_size
+                data = dict(dir_name=remote_dir, hls_name=remote_name)
+                files = dict()
+                for path, size in files_list:
+                    data[os.path.basename(path)] = str(size)
+                    files[os.path.basename(path)] = open(path, 'rb')
+                response = self.api('upload/hls/', method='post', data=data, files=files, timeout=3600, max_retry=5)
+                files_list = list()
+                files_size = 0
+                if not remote_dir:
+                    remote_dir = response['dir_name']
+        # Send remaining ts fragments and m3u8 file
+        size = os.path.getsize(m3u8_path)
+        files_size += size
+        files_list.append((m3u8_path, size))
+        logger.info('Uploading %s files (%.2f MiB, fragments the playlist) of "%s" in one request.', len(files_list), files_size / (1024 ** 2), ts_dir)
+        total_size += files_size
+        data = dict(dir_name=remote_dir, hls_name=remote_name)
+        files = dict()
+        for path, size in files_list:
+            data[os.path.basename(path)] = str(size)
+            files[os.path.basename(path)] = open(path, 'rb')
+        self.api('upload/hls/', method='post', data=data, files=files, timeout=3600, max_retry=5)
+        bandwidth = total_size * 8 / ((time.time() - begin) * 1000000)
+        logger.info('Upload finished (%s files in "%s"), average bandwidth: %.2f Mbits/s', total_files_count, remote_dir, bandwidth)
+        return remote_dir
+
     def chunked_upload(self, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True):
         chunk_size = self.config['UPLOAD_CHUNK_SIZE']
         total_size = os.path.getsize(file_path)
@@ -275,7 +337,7 @@ class MediaServerClient:
                     md5sum.update(chunk)
                 files = {'file': (os.path.basename(file_path), chunk)}
                 headers = {'Content-Range': 'bytes %s-%s/%s' % (start_offset, end_offset, total_size)}
-                response = self.api('medias/resource/upload/', method='post', data=data, files=files, headers=headers, timeout=3600, max_retry=5)
+                response = self.api('upload/', method='post', data=data, files=files, headers=headers, timeout=3600, max_retry=5)
                 if progress_callback:
                     pdata = progress_data or dict()
                     progress_callback(0.9 * end_offset / total_size, **pdata)
@@ -291,7 +353,7 @@ class MediaServerClient:
             data['no_md5'] = 'yes'
         if remote_path:
             data['path'] = remote_path
-        response = self.api('medias/resource/upload/complete/', method='post', data=data, timeout=3600, max_retry=5)
+        response = self.api('upload/complete/', method='post', data=data, timeout=3600, max_retry=5)
         if progress_callback:
             pdata = progress_data or dict()
             progress_callback(1., **pdata)
