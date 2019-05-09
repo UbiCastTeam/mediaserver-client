@@ -249,6 +249,12 @@ class MediaServerClient:
                         retry_count += 1
                         logger.error('Request on %s failed (tried %s times): %s', suffix, retry_count, e)
                         time.sleep(3 * retry_count * retry_count)
+                        # seek to 0 in file objects
+                        # (file objects using a value different from 0 as initial position is not supported)
+                        if kwargs.get('files'):
+                            for file_o in kwargs['files']:
+                                if hasattr(file_o, 'seek'):
+                                    file_o.seek(0)
         else:
             result = self.request(*args, **kwargs)
         logger.debug('API call duration: %.2f s - %s', time.time() - begin, suffix)
