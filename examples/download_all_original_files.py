@@ -3,10 +3,10 @@
 '''
 Script to download all best quality video files from a MediaServer.
 
-To use this script clone MediaServer client and put this file in a sub dir in the client dir.
+To use this script clone MediaServer client, configure it and run this file.
 git clone https://github.com/UbiCastTeam/mediaserver-client
-mkdir examples
-mv "this file" mediaserver-client/examples
+cd mediaserver-client
+python3 examples/download_all_original_files.py
 '''
 import os
 import re
