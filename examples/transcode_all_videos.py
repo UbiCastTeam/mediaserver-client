@@ -15,16 +15,10 @@ import os
 import sys
 
 
-TASKS_PRIORITY = 5
+DEFAULT_TASKS_PRIORITY = 5
 
 
-if __name__ == '__main__':
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from mediaserver_api_client import MediaServerClient
-
-    msc = MediaServerClient()
-    msc.check_server()
-
+def transcode_all_videos(priority):
     more = True
     start = ''
     index = 0
@@ -41,7 +35,7 @@ if __name__ == '__main__':
                 msc.api('medias/task/', method='post', data=dict(
                     oid=item['oid'],
                     task='transcoding',
-                    params=json.dumps(dict(priority=TASKS_PRIORITY, delete_extra_files=True))
+                    params=json.dumps(dict(priority=priority or DEFAULT_TASKS_PRIORITY, delete_extra_files=True))
                 ))
             except Exception as e:
                 if 'has no usable ressources' in str(e):
@@ -58,3 +52,16 @@ if __name__ == '__main__':
     print('%s transcoding tasks failed to be started.' % failed)
     print('%s media have no resouces and cannot be transcoded.' % non_transcodable)
     print('Total media count: %s.' % (succeeded + failed + non_transcodable))
+
+
+if __name__ == '__main__':
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from ms_client import MediaServerClient
+
+    local_conf = sys.argv[1] if len(sys.argv) > 1 else None
+    msc = MediaServerClient(local_conf)
+    msc.check_server()
+
+    priority = int(sys.argv[2] if len(sys.argv) > 2 else '0')
+
+    transcode_all_videos(msc, priority)

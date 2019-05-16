@@ -14,14 +14,7 @@ import subprocess
 import sys
 
 
-if __name__ == '__main__':
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from mediaserver_api_client import MediaServerClient
-
-    msc = MediaServerClient()
-    msc.check_server()
-
-    dir_path = 'videos'
+def download_all_original_files(msc, dir_path='videos'):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
@@ -42,7 +35,7 @@ if __name__ == '__main__':
                 if r['protocol'] == 'http' and r['format'] not in ('m3u8', 'youtube', 'embed'):
                     best_quality = r
                     break
-            video_page = msc.config['SERVER_URL'] + '/permalink/' + item['oid'] + '/'
+            video_page = msc.config['URL'] + '/permalink/' + item['oid'] + '/'
             if not best_quality:
                 print('WARNING: No resource file found for video "%s"!' % video_page)
             else:
@@ -61,3 +54,16 @@ if __name__ == '__main__':
             print('%s\t%s\t' % f)
     else:
         print('All download have been done successfully.')
+
+
+if __name__ == '__main__':
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from ms_client import MediaServerClient
+
+    local_conf = sys.argv[1] if len(sys.argv) > 1 else None
+    msc = MediaServerClient(local_conf)
+    msc.check_server()
+
+    dir_path = sys.argv[2] if len(sys.argv) > 2 else ''
+
+    download_all_original_files(msc, dir_path)

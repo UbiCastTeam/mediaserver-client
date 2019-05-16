@@ -43,12 +43,13 @@ def get_channel_size(msc, oid, info=None):
 
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from mediaserver_api_client import MediaServerClient
+    from ms_client import MediaServerClient
 
-    msc = MediaServerClient()
+    local_conf = sys.argv[1] if len(sys.argv) > 1 else None
+    msc = MediaServerClient(local_conf)
     msc.check_server()
 
-    channel_oid = '' if len(sys.argv) < 2 else sys.argv[1]
+    channel_oid = sys.argv[2] if len(sys.argv) > 2 else ''
 
     info = get_channel_size(msc, channel_oid)
     print('')
