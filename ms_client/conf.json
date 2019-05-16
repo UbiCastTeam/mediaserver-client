@@ -11,8 +11,8 @@
     // API key of the MediaServer user account
     "API_KEY": "",
 
-    // Origin name of added media
-    "ORIGIN": "python-api-client",
+    // Client name used as origin name of added media
+    "CLIENT_ID": "python-api-client",
 
     // Check server SSL(TLS) certificate
     "VERIFY_SSL": false,
