@@ -144,3 +144,4 @@ If you are using the first version of this client (a single file named mediaserv
 
 * Remove the old client file (mediaserver_api_client.py).
 * Install the new client using the setup.py.
+* Change all occurence of `MediaServerClient`.`config` by `MediaServerClient`.`conf`.
