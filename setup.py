@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os
-from distutils.core import setup
+from setuptools import setup
 import ms_client
 
 
@@ -28,7 +28,7 @@ root_dir = os.path.dirname(__file__)
 if root_dir != '':
     os.chdir(root_dir)
 
-for dirpath, dirnames, filenames in os.walk('ms_client'):
+for dirpath, dirnames, filenames in os.walk('ms_client', followlinks=True):
     # Ignore PEP 3147 cache dirs and those whose names start with '.'
     dirnames[:] = [d for d in dirnames if not d.startswith('.') and d != '__pycache__']
     parts = fullsplit(dirpath)
