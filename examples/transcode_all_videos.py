@@ -18,7 +18,7 @@ import sys
 DEFAULT_TASKS_PRIORITY = 5
 
 
-def transcode_all_videos(priority):
+def transcode_all_videos(msc, priority):
     more = True
     start = ''
     index = 0
