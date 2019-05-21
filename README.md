@@ -4,7 +4,7 @@ A python3 reference implementation of an UbiCast MediaServer API client.
 
 ## Important
 
-For production use, it is recommended to use the branch named "stable". The master branch is used for development.
+For production use, it is recommended to use the branch named "stable". The "master" branch is used for development.
 
 ## Examples
 
