@@ -95,12 +95,13 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
             total_size += files_size
             data = dict(dir_name=remote_dir, hls_name=remote_name)
             files = dict()
+            # Get files size and content (load in RAM to avoid triggering open file limit)
             for path, size in files_list:
-                data[os.path.basename(path)] = str(size)
-                files[os.path.basename(path)] = open(path, 'rb')
+                name = os.path.basename(path)
+                data[name] = str(size)
+                with open(path, 'rb') as fo:
+                    files[name] = (name, fo.read())
             response = client.api('upload/hls/', method='post', data=data, files=files, timeout=3600, max_retry=5)
-            for fo in files.values():
-                fo.close()
             if progress_callback:
                 pdata = progress_data or dict()
                 progress_callback(total_files_count / len(ts_fragments), **pdata)
@@ -116,12 +117,13 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
     total_size += files_size
     data = dict(dir_name=remote_dir, hls_name=remote_name)
     files = dict()
+    # Get files size and content (load in RAM to avoid triggering open file limit)
     for path, size in files_list:
-        data[os.path.basename(path)] = str(size)
-        files[os.path.basename(path)] = open(path, 'rb')
+        name = os.path.basename(path)
+        data[name] = str(size)
+        with open(path, 'rb') as fo:
+            files[name] = (name, fo.read())
     client.api('upload/hls/', method='post', data=data, files=files, timeout=3600, max_retry=5)
-    for fo in files.values():
-        fo.close()
     bandwidth = total_size * 8 / ((time.time() - begin) * 1000000)
     logger.info('Upload finished (%s files in "%s"), average bandwidth: %.2f Mbits/s', total_files_count, remote_dir, bandwidth)
     if progress_callback:
