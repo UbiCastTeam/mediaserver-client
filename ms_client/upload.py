@@ -71,8 +71,13 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
         raise ValueError('The ts directory "%s" of the m3u8 file "%s" does not exist.' % (ts_dir, m3u8_path))
     remote_dir = remote_dir.strip(' \t\n\r/\\')
     remote_name = os.path.basename(ts_dir)
-    # Send ts fragments
+    # Get configuration
     max_size = client.conf['UPLOAD_CHUNK_SIZE']
+    logger.debug('HLS upload requests size limit: %s B.', max_size)
+    # Limit number of open files if max size is above or almost equal to MediaServer memory upload limit
+    max_files = 500 if max_size > 30000000 else None
+    logger.debug('HLS upload files per request limit: %s.', max_files)
+    # Send ts fragments
     files_list = list()
     files_size = 0
     total_size = 0
@@ -89,7 +94,7 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
         files_size += size
         files_list.append((ts_path, size))
         total_files_count += 1
-        if files_size > max_size:
+        if files_size > max_size or (max_files and len(files_list) >= max_files):
             # Send files in list
             logger.info('Uploading %s files (%.2f MiB, only fragments) of "%s" in one request.', len(files_list), files_size / (1024 ** 2), ts_dir)
             total_size += files_size
