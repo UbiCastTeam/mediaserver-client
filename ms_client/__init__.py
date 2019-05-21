@@ -15,7 +15,7 @@ from . import upload as upload_lib
 from . import users_csv as users_csv_lib
 
 __version__ = '2.0'
-logger = logging.getLogger('mediaserver_client')
+logger = logging.getLogger('ms_client')
 
 
 class MediaServerClient():
@@ -55,7 +55,19 @@ class MediaServerClient():
             self.conf_checked = True
 
     def check_server(self):
-        self.api('/', timeout=5)
+        return self.api('/', timeout=5)
+
+    def get_server_version(self):
+        if not hasattr(self, '_server_version'):
+            try:
+                response = self.api('/', timeout=5)
+                version_str = response['mediaserver']
+                self._server_version = tuple([int(i) for i in version_str.split('.')])
+            except Exception as e:
+                raise Exception('Failed to get MediaServer version: %s', e)
+            else:
+                logger.info('MediaServer version is: %s', self._server_version)
+        return self._server_version
 
     def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=0, ignore_404=False):
         if self.session is None and self.conf['USE_SESSION']:

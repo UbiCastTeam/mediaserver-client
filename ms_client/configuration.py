@@ -11,7 +11,7 @@ import os
 import re
 import subprocess
 
-logger = logging.getLogger('ms_client.lib')
+logger = logging.getLogger('ms_client.configuration')
 
 BASE_CONF_PATH = os.path.join(os.path.dirname(__file__), 'conf.json')
 

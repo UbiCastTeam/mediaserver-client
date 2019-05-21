@@ -2,11 +2,9 @@
 
 A python3 reference implementation of an UbiCast MediaServer API client.
 
-## Important!
+## Important
 
-This version of the client requires MediaServer >= 8.2.0.
-
-Use the branch named stable to interact with production servers. The master branch is used for development.
+For production use, it is recommended to use the branch named "stable". The master branch is used for development.
 
 ## Examples
 
