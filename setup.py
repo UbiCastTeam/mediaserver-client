@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import os
 from setuptools import setup
-import ms_client
 
 
 def fullsplit(path, result=None):
@@ -48,9 +47,19 @@ for dirpath, dirnames, filenames in os.walk('ms_client', followlinks=True):
         package_files = package_data.setdefault('.'.join(parts), [])
         package_files.extend([os.path.join(path, f) for f in filenames])
 
+
+# get version without importing module
+version = None
+with open('ms_client/__init__.py', 'r') as fo:
+    for line in fo:
+        if line.startswith('__version__'):
+            version = line[len('__version__'):].strip(' =\'"\n\t')
+            break
+
+
 setup(
     name='ms_client',
-    version=ms_client.__version__,
+    version=version,
     description='A Python3 client to interact with an UbiCast MediaServer site.',
     author='UbiCast',
     url='https://github.com/UbiCastTeam/mediaserver-client',
