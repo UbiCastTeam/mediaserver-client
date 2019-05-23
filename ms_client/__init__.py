@@ -62,7 +62,7 @@ class MediaServerClient():
         if not hasattr(self, '_server_version'):
             try:
                 response = self.api('/', timeout=5)
-                version_str = response['mediaserver']
+                version_str = response.get('mediaserver') or '6.5.4'  # "mediaserver" key was added in version 6.6.0
                 self._server_version = tuple([int(i) for i in version_str.split('.')])
             except Exception as e:
                 raise Exception('Failed to get MediaServer version: %s', e)
