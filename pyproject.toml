@@ -25,7 +25,10 @@ keywords = [
     "client",
 ]
 packages = [
-    { include = "mediaserver_api_client.py" },
+    { include = "ms_client" },
+]
+include = [
+    "ms_client/conf.json",
 ]
 
 [tool.poetry.dependencies]
