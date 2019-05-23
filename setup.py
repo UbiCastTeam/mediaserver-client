@@ -67,5 +67,6 @@ setup(
     packages=packages,
     package_data=package_data,
     scripts=[],
+    setup_requires=['setuptools'],
     install_requires=['requests'],
 )
