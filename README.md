@@ -2,9 +2,18 @@
 
 A python3 reference implementation of an UbiCast MediaServer API client.
 
+
 ## Important
 
 For production use, it is recommended to use the branch named "stable". The "master" branch is used for development.
+
+
+## Client class instantiation
+
+The client class (`ms_client`.`MediaServerClient`) takes two arguments:
+* `local_conf`: This argument can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example). The default value is `None`, which means no configuration.
+* `setup_logging`: This argument must be a boolean. If set to `True`, the logging to console will be configured. The default value is `True`.
+
 
 ## Examples
 
@@ -136,10 +145,12 @@ for a in response['types']:
         print(a['id'])
 ```
 
+
 ## Notes about older client
 
 If you are using the first version of this client (a single file named mediaserver_api_client.py), here are the steps to update your client:
 
 * Remove the old client file (mediaserver_api_client.py).
 * Install the new client using the setup.py.
-* Change all occurence of `MediaServerClient`.`config` by `MediaServerClient`.`conf`.
+* Replace the arguments named `config_dict` and `config_path` by `local_conf` in the `MediaServerClient` init.
+* Replace all occurences of `MediaServerClient`.`config` by `MediaServerClient`.`conf`.

@@ -22,9 +22,10 @@ class MediaServerClient():
     '''
     MediaServer API client class
     '''
-    DEFAULT_CONF = None  # can be either a dict, a path or a unix user (unix:msuser for example)
+    DEFAULT_CONF = None  # can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
 
     def __init__(self, local_conf=None, setup_logging=True):
+        # "local_conf" can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
         # Setup logging
         if setup_logging:
             log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'
