@@ -10,7 +10,7 @@ import math
 import os
 import time
 
-logger = logging.getLogger('ms_client.upload')
+logger = logging.getLogger('ms_client.lib.upload')
 
 
 def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True):
