@@ -7,7 +7,7 @@ This module is not intended to be used directly, only the client class should be
 import logging
 import time
 
-logger = logging.getLogger('ms_client.csv')
+logger = logging.getLogger('ms_client.lib.csv')
 
 
 def import_users_csv(client, csv_path):

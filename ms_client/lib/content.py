@@ -6,7 +6,7 @@ This module is not intended to be used directly, only the client class should be
 '''
 import logging
 
-logger = logging.getLogger('ms_client.content')
+logger = logging.getLogger('ms_client.lib.content')
 
 
 def add_media(client, title=None, file_path=None, progress_callback=None, progress_data=None, **kwargs):

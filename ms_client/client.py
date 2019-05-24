@@ -8,12 +8,12 @@ Copyright 2019, Florent Thiery, Stéphane Diemer
 import logging
 import requests
 import time
-from . import configuration as configuration_lib
-from . import content as content_lib
-from . import upload as upload_lib
-from . import users_csv as users_csv_lib
+from .lib import configuration as configuration_lib
+from .lib import content as content_lib
+from .lib import upload as upload_lib
+from .lib import users_csv as users_csv_lib
 
-logger = logging.getLogger('ms_client.main')
+logger = logging.getLogger('ms_client.client')
 
 
 class MediaServerClient():
