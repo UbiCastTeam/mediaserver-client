@@ -19,11 +19,11 @@ install: build
 
 publish_dry: build
 	twine check dist/*.{whl,tar.gz}
-	twine upload --repository-url https://test.pypi.org/legacy/ dist/*.{whl,tar.gz}
+	twine upload -r testubicast --skip-existing dist/*.{whl,tar.gz}
 
 publish: build
 	twine check dist/*.{whl,tar.gz}
-	twine upload dist/*.{whl,tar.gz}
+	twine upload -r ubicast --skip-existing dist/*.{whl,tar.gz}
 
 clean:
 	rm -rf .eggs/ build/ dist/ *.egg-info/
