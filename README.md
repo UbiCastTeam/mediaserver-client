@@ -1,3 +1,6 @@
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mediaserver-api-client.svg)
+![PyPI](https://img.shields.io/pypi/v/mediaserver-api-client.svg)
+
 # mediaserver-client
 
 A python3 reference implementation of an UbiCast MediaServer API client.
