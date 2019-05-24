@@ -20,7 +20,7 @@ The client class (`ms_client`.`MediaServerClient`) takes two arguments:
 ### Start/Stop a live
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 response = msc.api('/lives/prepare', method='post')
@@ -38,7 +38,7 @@ if response['success']:
 ### Remove all users function
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 
@@ -53,7 +53,7 @@ def remove_all_users():
 ### Add media with a video, make it published at once
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validated='yes', speaker_email='user@domain.com'))
@@ -62,7 +62,7 @@ print(msc.add_media('Test multichunk upload mp4', file_path='test.mp4', validate
 ### Create user personal channel and upload into it
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 personal_channel_oid = msc.api('/channels/personal/', method='get', params={'email': 'test@test.com'}).get('oid')
@@ -83,7 +83,7 @@ if personal_channel_oid:
 ### Add media with a zip
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 print(msc.add_media('Test multichunk upload zip', file_path='/tmp/test.zip'))
@@ -93,7 +93,7 @@ print(msc.add_media(file_path='test.mp4'))
 ### Add a user
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 print(msc.api('users/add/', method='post', data={'email': 'test@test.com'}))
@@ -109,7 +109,7 @@ Albert;Einstein;albert.einstein@test.com;Humanity
 ```
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 msc.import_users_csv('users.csv')
@@ -118,7 +118,7 @@ msc.import_users_csv('users.csv')
 ### Add an annotation
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 print(msc.api('annotations/post', params={'oid': 'v125849d470d7v92kvtc', 'time': 1000}))
@@ -127,7 +127,7 @@ print(msc.api('annotations/post', params={'oid': 'v125849d470d7v92kvtc', 'time':
 ### Get Chapters
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 print(msc.api('annotations/chapters/list', params={'oid': 'v125849d470d7v92kvtc'}))
@@ -136,7 +136,7 @@ print(msc.api('annotations/chapters/list', params={'oid': 'v125849d470d7v92kvtc'
 ### Get annotations types list and print chapters id
 
 ``` python
-from ms_client import MediaServerClient
+from ms_client.main import MediaServerClient
 msc = MediaServerClient(local_conf='your-conf.json')
 
 response = msc.api('annotations/types/list', params={'oid': 'v125849d470d7v92kvtc'})

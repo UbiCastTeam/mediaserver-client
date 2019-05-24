@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     # get ms client
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from ms_client import MediaServerClient
+    from ms_client.main import MediaServerClient
 
     msc = MediaServerClient(args.conf)
     if args.chunk:
