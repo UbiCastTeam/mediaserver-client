@@ -65,7 +65,7 @@ class MediaServerClient():
             except Exception as e:
                 raise Exception('Failed to get MediaServer version: %s', e)
             else:
-                logger.info('MediaServer version is: %s', self._server_version)
+                logger.debug('MediaServer version is: %s', self._server_version)
         return self._server_version
 
     def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=0, ignore_404=False):
