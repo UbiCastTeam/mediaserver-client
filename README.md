@@ -1,5 +1,6 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mediaserver-api-client.svg)
 ![PyPI](https://img.shields.io/pypi/v/mediaserver-api-client.svg)
+![Travis (.org) branch](https://img.shields.io/travis/UbiCastTeam/mediaserver-client/master.svg)
 
 # mediaserver-client
 
