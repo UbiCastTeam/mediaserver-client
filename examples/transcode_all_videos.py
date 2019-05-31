@@ -36,7 +36,7 @@ def transcode_all_videos(msc, priority):
                     oid=item['oid'],
                     task='transcoding',
                     params=json.dumps(dict(priority=priority or DEFAULT_TASKS_PRIORITY, delete_extra_files=True))
-                ))
+                ), timeout=300)
             except Exception as e:
                 if 'has no usable ressources' in str(e):
                     non_transcodable += 1
