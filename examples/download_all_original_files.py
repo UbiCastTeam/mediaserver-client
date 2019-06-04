@@ -35,7 +35,7 @@ def download_all_original_files(msc, dir_path='videos'):
                 if r['protocol'] == 'http' and r['format'] not in ('m3u8', 'youtube', 'embed'):
                     best_quality = r
                     break
-            video_page = msc.config['URL'] + '/permalink/' + item['oid'] + '/'
+            video_page = msc.conf['SERVER_URL'] + '/permalink/' + item['oid'] + '/'
             if not best_quality:
                 print('WARNING: No resource file found for video "%s"!' % video_page)
             else:
