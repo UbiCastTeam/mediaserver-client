@@ -10,18 +10,14 @@ import logging
 import os
 import re
 import subprocess
+from ..conf import BASE_CONF
 
 logger = logging.getLogger('ms_client.lib.configuration')
-
-BASE_CONF_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'conf.json')
 
 
 def load_conf(default_conf=None, local_conf=None):
     # copy default configuration
-    with open(BASE_CONF_PATH, 'r') as fo:
-        content = fo.read()
-    content = re.sub(r'\n\s*//.*', '\n', content)  # remove comments
-    conf = json.loads(content)
+    conf = BASE_CONF.copy()
     # update with default and local configuration
     for index, conf_override in enumerate((default_conf, local_conf)):
         if not conf_override:
