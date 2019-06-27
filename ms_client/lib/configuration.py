@@ -4,11 +4,11 @@
 MediaServer client library
 This module is not intended to be used directly, only the client class should be used.
 '''
-import imp
-import json
-import logging
 import os
 import re
+import json
+import types
+import logging
 import subprocess
 from ..conf import BASE_CONF
 
@@ -102,7 +102,7 @@ def get_conf_for_unix_user(user):
         raise Exception('Failed to get instance db settings, no configuration found in mssettings.')
     content = content[content.index('\nDATABASES'):]
     content = content[:content.index('\n}') + 2]
-    dbs_module = imp.new_module('dbs_module')
+    dbs_module = types.ModuleType('dbs_module')
     exec(content, dbs_module.__dict__)
 
     # get MS site settings
