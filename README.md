@@ -7,6 +7,24 @@
 A python3 reference implementation of an UbiCast MediaServer API client.
 
 
+## Installation
+
+To install the latest release of the mediaserver-client from PyPI :
+
+```sh
+pip install mediaserver-api-client
+```
+
+For development, the package can be installed in editable mode to allow changes on it :
+
+```sh
+git clone git@github.com:UbiCastTeam/mediaserver-client.git
+cd mediaserver-client/
+# there it's recommended to create/enable some virtualenv
+pip install --editable .
+```
+
+
 ## Important
 
 For production use, it is recommended to use the branch named "stable". The "master" branch is used for development.
