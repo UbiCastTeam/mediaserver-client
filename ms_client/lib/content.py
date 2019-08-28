@@ -23,6 +23,20 @@ def add_media(client, title=None, file_path=None, progress_callback=None, progre
     return response
 
 
+def download_metadata_zip(client, media_oid, path, include_annotations=None, include_resources_links=None):
+    if not media_oid:
+        raise ValueError('You should give an object id to get the zip file.')
+    valid_annotations = ('all', 'editorial', 'none')
+    if include_annotations and include_annotations not in valid_annotations:
+        raise ValueError('Invalid value given for "include_annotations". Valid annotations values: %s.' % ', '.join(valid_annotations))
+    params = dict(oid=media_oid, annotations=include_annotations or 'none', resources='yes' if include_resources_links else 'no')
+    req = client.api('medias/get/zip/', method='get', params=params, timeout=3600, stream=True)
+    with open(path, 'wb') as fo:
+        for chunk in req.iter_content(10485760):  # 10 MB chunks
+            fo.write(chunk)
+    return path
+
+
 def remove_all_content(client):
     logger.info('Remove all content')
     channels = client.api('channels/tree/')['channels']

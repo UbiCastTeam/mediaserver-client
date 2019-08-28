@@ -68,7 +68,7 @@ class MediaServerClient():
                 logger.debug('MediaServer version is: %s', self._server_version)
         return self._server_version
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=0, ignore_404=False):
+    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=0, ignore_404=False, stream=False):
         if self.session is None and self.conf['USE_SESSION']:
             self.session = requests.Session()
 
@@ -87,6 +87,7 @@ class MediaServerClient():
             params=params,
             data=data,
             files=files,
+            stream=stream,
             timeout=timeout or self.conf['TIMEOUT'],
             proxies=self.conf['PROXIES'],
             verify=self.conf['VERIFY_SSL'],
@@ -96,7 +97,9 @@ class MediaServerClient():
             return None
         if req.status_code != 200:
             raise Exception('HTTP %s error on %s: %s' % (req.status_code, url, req.text))
-        if parse_json:
+        if stream:
+            response = req
+        elif parse_json:
             response = req.json()
             if 'success' in response and not response['success']:
                 error_message = response.get('error') or response.get('errors') or response.get('message') or 'No information on error.'
@@ -144,6 +147,9 @@ class MediaServerClient():
 
     def add_media(self, *args, **kwargs):
         return content_lib.add_media(self, *args, **kwargs)
+
+    def download_metadata_zip(self, *args, **kwargs):
+        return content_lib.download_metadata_zip(self, *args, **kwargs)
 
     def remove_all_content(self, *args, **kwargs):
         return content_lib.remove_all_content(self, *args, **kwargs)
