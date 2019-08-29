@@ -5,6 +5,7 @@ MediaServer client upload library
 This module is not intended to be used directly, only the client class should be used.
 '''
 import logging
+import os
 
 logger = logging.getLogger('ms_client.lib.content')
 
@@ -23,13 +24,19 @@ def add_media(client, title=None, file_path=None, progress_callback=None, progre
     return response
 
 
-def download_metadata_zip(client, media_oid, path, include_annotations=None, include_resources_links=None):
+def download_metadata_zip(client, media_oid, path, include_annotations=None, include_resources_links=None, force=False):
     if not media_oid:
         raise ValueError('You should give an object id to get the zip file.')
     valid_annotations = ('all', 'editorial', 'none')
     if include_annotations and include_annotations not in valid_annotations:
         raise ValueError('Invalid value given for "include_annotations". Valid annotations values: %s.' % ', '.join(valid_annotations))
     params = dict(oid=media_oid, annotations=include_annotations or 'none', resources='yes' if include_resources_links else 'no')
+    if not force and os.path.isfile(path):
+        size = str(os.path.getsize(path))
+        req = client.api('medias/get/zip/', method='head', params=params, timeout=3600)
+        if req.headers.get('Content-Length') == size:
+            logger.info('Skipping download of zip file for %s because the file already exists and has the correct size.', media_oid)
+            return path
     req = client.api('medias/get/zip/', method='get', params=params, timeout=3600, stream=True)
     with open(path, 'wb') as fo:
         for chunk in req.iter_content(10485760):  # 10 MB chunks

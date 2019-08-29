@@ -76,6 +76,10 @@ class MediaServerClient():
             req_function = self.session.get if self.session is not None else requests.get
             params = params or dict()
             params['api_key'] = self.conf['API_KEY']
+        elif method == 'head':
+            req_function = self.session.head if self.session is not None else requests.head
+            params = params or dict()
+            params['api_key'] = self.conf['API_KEY']
         else:
             req_function = self.session.post if self.session is not None else requests.post
             data = data or dict()
@@ -97,7 +101,7 @@ class MediaServerClient():
             return None
         if req.status_code != 200:
             raise Exception('HTTP %s error on %s: %s' % (req.status_code, url, req.text))
-        if stream:
+        if stream or method == 'head':
             response = req
         elif parse_json:
             response = req.json()
