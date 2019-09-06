@@ -31,6 +31,14 @@ class MediaServerClient():
         # Read conf file
         self.conf_checked = False
         self.conf = self.load_conf(local_conf)
+        # Configure logging
+        if setup_logging:
+            level = getattr(logging, self.conf['LOG_LEVEL']) if self.conf.get('LOG_LEVEL') else logging.INFO
+            root_logger = logging.getLogger('root')
+            root_logger.setLevel(level)
+            logger.setLevel(level)
+            logging.captureWarnings(False)
+            logger.debug('Logging conf set.')
         if not self.conf['VERIFY_SSL']:
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
