@@ -30,11 +30,11 @@ else:
     RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = DEFAULT = ''
 
 
-MEDIA_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos'}
+OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
 
 
 def get_repr(item):
-    return '%s %s "%s%s"' % (MEDIA_TYPES[item['oid'][0]], item['oid'], item['title'][:40], ('...' if len(item['title']) > 40 else ''))
+    return '%s %s "%s%s"' % (OBJECT_TYPES[item['oid'][0]], item['oid'], item['title'][:40], ('...' if len(item['title']) > 40 else ''))
 
 
 def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=False):
@@ -60,8 +60,13 @@ def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=Fal
                 print('No backup for media %s because creation date %s is newer than backup date %s' % (get_repr(item), item['creation'], limit_date))
                 continue
 
-            file_prefix = MEDIA_TYPES[item['oid'][0]] + '_' + item['slug']
-            media_backup_dir = dir_path + '/' + file_prefix
+            channels = msc.api('channels/path/', params=dict(oid=item['oid']))['path']
+
+            file_prefix = OBJECT_TYPES[item['oid'][0]] + '_' + item['slug']
+            media_backup_dir = dir_path
+            for channel in channels:
+                media_backup_dir += '/' + OBJECT_TYPES['c'] + '_' + channel['slug']
+            media_backup_dir += '/' + file_prefix
             if not os.path.exists(media_backup_dir):
                 os.makedirs(media_backup_dir)
 
@@ -222,6 +227,7 @@ if __name__ == '__main__':
 
     msc = MediaServerClient(args.configuration_path)
     msc.check_server()
+    msc.conf['TIMEOUT'] = 30  # Increase timeout because backups can be very disk intensive and slow the server
 
     rc = make_backup(msc, args.dir_path, limit_date, args.use_add_date, args.enable_delete)
     sys.exit(rc)
