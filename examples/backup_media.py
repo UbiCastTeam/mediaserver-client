@@ -7,6 +7,9 @@ To use this script clone MediaServer client, configure it and run this file.
 git clone https://github.com/UbiCastTeam/mediaserver-client
 cd mediaserver-client
 python3 examples/backup_media.py --conf conf.json --date 2020-01-01
+
+Dependencies:
+python3-unidecode
 '''
 
 import argparse
@@ -15,6 +18,7 @@ import os
 import requests
 import subprocess
 import sys
+import unidecode
 
 
 # Terminal colors
@@ -35,6 +39,10 @@ OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
 
 def get_repr(item):
     return '%s %s "%s%s"' % (OBJECT_TYPES[item['oid'][0]], item['oid'], item['title'][:40], ('...' if len(item['title']) > 40 else ''))
+
+
+def get_prefix(item):
+    return unidecode.unidecode(item['title'][:57].strip()) + ' - ' + item['oid']
 
 
 def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=False):
@@ -62,10 +70,10 @@ def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=Fal
 
             channels = msc.api('channels/path/', params=dict(oid=item['oid']))['path']
 
-            file_prefix = OBJECT_TYPES[item['oid'][0]] + '_' + item['slug']
+            file_prefix = get_prefix(item)
             media_backup_dir = dir_path
             for channel in channels:
-                media_backup_dir += '/' + OBJECT_TYPES['c'] + '_' + channel['slug']
+                media_backup_dir += '/' + get_prefix(channel)
             media_backup_dir += '/' + file_prefix
             if not os.path.exists(media_backup_dir):
                 os.makedirs(media_backup_dir)
@@ -147,7 +155,7 @@ def download_media_best_resource(msc, item, media_backup_dir, file_prefix):
         raise Exception('Could not download any resource from list: %s.' % resources)
 
     print('Best quality file for video %s: %s' % (get_repr(item), best_quality['file']))
-    destination_resource = '%s/%s_%sx%s.%s' % (media_backup_dir, file_prefix, best_quality['width'], best_quality['height'], best_quality['format'])
+    destination_resource = '%s/%s - %sx%s.%s' % (media_backup_dir, file_prefix, best_quality['width'], best_quality['height'], best_quality['format'])
 
     url_resource = msc.api('download/', params=dict(oid=item['oid'], url=best_quality['file'], redirect='no'))['url']
     if os.path.exists(destination_resource):
