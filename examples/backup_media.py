@@ -62,7 +62,7 @@ def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=Fal
         for item in response['items']:
             index += 1
             media_link = msc.conf['SERVER_URL'] + '/permalink/' + item['oid'] + '/'
-            print('// %sMedia %s:%s "%s" "%s"' % (PURPLE, index, DEFAULT, media_link, get_repr(item)))
+            print('// %sMedia %s:%s "%s" %s' % (PURPLE, index, DEFAULT, media_link, get_repr(item)))
             media_date = datetime.datetime.strptime(item[date_field][0:10], '%Y-%m-%d').date()
             if media_date > limit_date:
                 print('No backup for media %s because creation date %s is newer than backup date %s' % (get_repr(item), item['creation'], limit_date))
