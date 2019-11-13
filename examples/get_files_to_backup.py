@@ -78,6 +78,8 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
             add_date = datetime.datetime.strptime(item['add_date'].split(' ')[0], '%Y-%m-%d').date()
             if add_date < from_date:
                 more = False
+                if verbose:
+                    print('# Media was not added in the requested period, stopping loop.')
                 break
             # get channels files
             channels = msc.api('channels/path/', params=dict(oid=item['oid']))['path']
@@ -89,11 +91,15 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
                     if folder_name:
                         print_path_if_exists('/home/%s/msinstance/media/public/%s/' % (user, folder_name), fout)
                         print_path_if_exists('/home/%s/msinstance/media/protected/%s/' % (user, folder_name), fout)
+                    elif verbose:
+                        print('# No folder name found for channel %s.' % get_repr(info))
             # get media files
             folder_name = get_item_folder_name(item)
             if folder_name:
                 print_path_if_exists('/home/%s/msinstance/media/public/%s/' % (user, folder_name), fout)
                 print_path_if_exists('/home/%s/msinstance/media/protected/%s/' % (user, folder_name), fout)
+            elif verbose:
+                print('# No folder name found for media %s.' % get_repr(item))
             # get media resources
             if item['oid'][0] == 'v':
                 resources = msc.api('medias/resources-list/', params=dict(oid=item['oid']))['resources']
@@ -140,7 +146,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--verbose',
         dest='verbose',
-        help='Display more informations.',
+        help='Display more informations. If --out is given, verbose is enabled.',
         action='store_true',
         default=False)
 
@@ -172,9 +178,10 @@ if __name__ == '__main__':
     msc = MediaServerClient('unix:%s' % args.user)
     msc.check_server()
 
+    verbose = args.verbose or args.output
     if args.output:
         with open(args.output, 'w') as fout:
-            rc = get_files_to_backup(msc, user=args.user, from_date=from_date, to_date=to_date, fout=fout, verbose=args.verbose)
+            rc = get_files_to_backup(msc, user=args.user, from_date=from_date, to_date=to_date, fout=fout, verbose=verbose)
     else:
-        rc = get_files_to_backup(msc, user=args.user, from_date=from_date, to_date=to_date, verbose=args.verbose)
+        rc = get_files_to_backup(msc, user=args.user, from_date=from_date, to_date=to_date, verbose=verbose)
     sys.exit(rc)
