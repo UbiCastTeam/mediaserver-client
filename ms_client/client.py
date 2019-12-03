@@ -29,8 +29,7 @@ class MediaServerClient():
             log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'
             logging.basicConfig(level=logging.INFO, format=log_format)
         # Read conf file
-        self.conf_checked = False
-        self.conf = self.load_conf(local_conf)
+        self.load_conf(local_conf)
         # Configure logging
         if setup_logging:
             level = getattr(logging, self.conf['LOG_LEVEL']) if self.conf.get('LOG_LEVEL') else logging.INFO
@@ -47,9 +46,9 @@ class MediaServerClient():
 
     def load_conf(self, local_conf):
         self.local_conf = local_conf
-        conf = configuration_lib.load_conf(self.DEFAULT_CONF, self.local_conf)
+        self.conf = configuration_lib.load_conf(self.DEFAULT_CONF, self.local_conf)
         self.conf_checked = False
-        return conf
+        return self.conf
 
     def update_conf(self, key, value):
         self.conf[key] = value
