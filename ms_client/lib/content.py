@@ -29,8 +29,11 @@ def download_metadata_zip(client, media_oid, path, include_annotations=None, inc
         raise ValueError('You should give an object id to get the zip file.')
     valid_annotations = ('all', 'editorial', 'none')
     if include_annotations and include_annotations not in valid_annotations:
-        raise ValueError('Invalid value given for "include_annotations". Valid annotations values: %s.' % ', '.join(valid_annotations))
-    params = dict(oid=media_oid, annotations=include_annotations or 'none', resources='yes' if include_resources_links else 'no')
+        raise ValueError('Invalid value given for "include_annotations". Valid values: %s.' % ', '.join(valid_annotations))
+    valid_resources = ('yes', 'no')
+    if include_resources_links and include_resources_links not in valid_resources:
+        raise ValueError('Invalid value given for "include_resources_links". Valid values: %s.' % ', '.join(valid_resources))
+    params = dict(oid=media_oid, annotations=include_annotations or 'none', resources=include_resources_links or 'no')
     if not force and os.path.isfile(path):
         size = str(os.path.getsize(path))
         req = client.api('medias/get/zip/', method='head', params=params, timeout=3600)
