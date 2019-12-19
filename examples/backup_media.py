@@ -143,10 +143,7 @@ def download_media_best_resource(msc, item, media_backup_dir, file_prefix):
         return
     best_quality = None
     for r in resources:
-        if r['format'] in ('youtube', 'embed'):
-            print('No resource to download because media is using %s.' % r['format'])
-            return
-        if r['protocol'] == 'http' and r['format'] not in ('m3u8', 'youtube', 'embed'):
+        if r['protocol'] == 'http' and r['format'] != 'm3u8':
             best_quality = r
             break
     if not best_quality:
@@ -157,18 +154,23 @@ def download_media_best_resource(msc, item, media_backup_dir, file_prefix):
     print('Best quality file for video %s: %s' % (get_repr(item), best_quality['file']))
     destination_resource = '%s/%s - %sx%s.%s' % (media_backup_dir, file_prefix, best_quality['width'], best_quality['height'], best_quality['format'])
 
-    url_resource = msc.api('download/', params=dict(oid=item['oid'], url=best_quality['file'], redirect='no'))['url']
-    if os.path.exists(destination_resource):
-        local_size = os.path.getsize(destination_resource)
-        req = requests.head(url_resource, verify=False)
-        if local_size == int(req.headers.get('Content-Length', '0')):
-            print('File is already downloaded: "%s".' % destination_resource)
-            return
+    if best_quality['format'] in ('youtube', 'embed'):
+        # dump youtube video id or embed code to a file
+        with open(destination_resource, 'w') as fo:
+            fo.write(best_quality['file'])
+    else:
+        url_resource = msc.api('download/', params=dict(oid=item['oid'], url=best_quality['file'], redirect='no'))['url']
+        if os.path.exists(destination_resource):
+            local_size = os.path.getsize(destination_resource)
+            req = requests.head(url_resource, verify=False)
+            if local_size == int(req.headers.get('Content-Length', '0')):
+                print('File is already downloaded: "%s".' % destination_resource)
+                return
 
-    print('Will download file to "%s".' % destination_resource)
-    p_resource = subprocess.run(['wget', '--no-check-certificate', url_resource, '-O', destination_resource])
-    if p_resource.returncode != 0:
-        raise Exception('The wget command exited with code %s.' % p_resource.returncode)
+        print('Will download file to "%s".' % destination_resource)
+        p_resource = subprocess.run(['wget', '--no-check-certificate', url_resource, '-O', destination_resource])
+        if p_resource.returncode != 0:
+            raise Exception('The wget command exited with code %s.' % p_resource.returncode)
 
 
 def download_media_metadata(msc, item, media_backup_dir, file_prefix):
