@@ -139,16 +139,23 @@ def backup_media(item, dir_path):
             zip_file.close()
 
     try:
+        meta_path = download_media_metadata(msc, item, media_backup_dir, file_prefix, metadata_zip_size)
+    except Exception as e:
+        raise Exception('Failed to download metadata: %s' % e)
+
+    if meta_path:
+        best_resource_size = 0  # force resource download if the metadata has changed
+    try:
         res_path = download_media_best_resource(msc, item, media_backup_dir, file_prefix, best_resource_size)
     except Exception as e:
         raise Exception('Failed to download resource: %s' % e)
 
-    try:
-        if res_path:
-            metadata_zip_size = 0  # force zip download if the best resource has changed
-        meta_path = download_media_metadata(msc, item, media_backup_dir, file_prefix, metadata_zip_size)
-    except Exception as e:
-        raise Exception('Failed to download metadata: %s' % e)
+    if res_path and not meta_path:
+        # force zip download if the best resource has changed and if the metadata were not already downloaded
+        try:
+            meta_path = download_media_metadata(msc, item, media_backup_dir, file_prefix, 0)
+        except Exception as e:
+            raise Exception('Failed to download metadata: %s' % e)
 
     if res_path or meta_path:
         # the metadata or the best resource has changed, put resource in zip and update info
