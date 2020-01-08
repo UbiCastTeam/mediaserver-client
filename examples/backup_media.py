@@ -224,13 +224,17 @@ def download_media_best_resource(msc, item, media_backup_dir, file_prefix, local
         if os.path.exists(destination_resource):
             local_size = os.path.getsize(destination_resource)
         if local_size:
-            req = requests.head(url_resource, verify=False)
+            req = requests.head(url_resource, verify=msc.conf['VERIFY_SSL'])
             if req.headers.get('Content-Length') == str(local_size):
                 print('File is already downloaded: "%s".' % destination_resource)
                 return
 
         print('Will download file to "%s".' % destination_resource)
-        p_resource = subprocess.run(['wget', '--no-check-certificate', url_resource, '-O', destination_resource])
+        if msc.conf['VERIFY_SSL']:
+            cmd = ['wget', url_resource, '-O', destination_resource]
+        else:
+            cmd = ['wget', '--no-check-certificate', url_resource, '-O', destination_resource]
+        p_resource = subprocess.run(cmd)
         if p_resource.returncode != 0:
             raise Exception('The wget command exited with code %s.' % p_resource.returncode)
     return destination_resource
