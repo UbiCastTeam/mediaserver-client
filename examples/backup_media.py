@@ -162,10 +162,6 @@ def backup_media(item, dir_path):
         if not meta_path and res_path:
             raise Exception('The metadata should have been downloaded.')
         metadata_size = os.path.getsize(meta_path)
-        try:
-            zip_file = zipfile.ZipFile(meta_path, 'r')
-        except Exception as e:
-            raise Exception('Failed to open downloaded zip file: %s' % e)
 
         # add resource in zip and some other informations
         try:
