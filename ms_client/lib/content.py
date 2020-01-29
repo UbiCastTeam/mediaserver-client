@@ -42,7 +42,7 @@ def download_metadata_zip(client, media_oid, path, include_annotations=None, inc
             return path
     req = client.api('medias/get/zip/', method='get', params=params, timeout=3600, stream=True)
     with open(path, 'wb') as fo:
-        for chunk in req.iter_content(10485760):  # 10 MB chunks
+        for chunk in req.iter_content(10000000):  # 10 MB chunks
             fo.write(chunk)
     return path
 

@@ -99,7 +99,7 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
         total_files_count += 1
         if files_size > max_size or (max_files and len(files_list) >= max_files):
             # Send files in list
-            logger.info('Uploading %s files (%.2f MiB, only fragments) of "%s" in one request.', len(files_list), files_size / (1024 ** 2), ts_dir)
+            logger.info('Uploading %s files (%.2f MB, only fragments) of "%s" in one request.', len(files_list), files_size / (1000000), ts_dir)
             total_size += files_size
             data = dict(dir_name=remote_dir, hls_name=remote_name)
             files = dict()
@@ -121,7 +121,7 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
     size = os.path.getsize(m3u8_path)
     files_size += size
     files_list.append((m3u8_path, size))
-    logger.info('Uploading %s files (%.2f MiB, fragments the playlist) of "%s" in one request.', len(files_list), files_size / (1024 ** 2), ts_dir)
+    logger.info('Uploading %s files (%.2f MB, fragments the playlist) of "%s" in one request.', len(files_list), files_size / (1000000), ts_dir)
     total_size += files_size
     data = dict(dir_name=remote_dir, hls_name=remote_name)
     files = dict()

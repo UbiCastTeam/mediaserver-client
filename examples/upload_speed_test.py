@@ -20,8 +20,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__.strip())
     parser.add_argument('conf', nargs='?', action='store', default=None, help='Configuration file path or instance unix user. Use local configuration file by default.')
     parser.add_argument('count', nargs='?', action='store', default=10, type=int, help='The number of files to send. Default is 10.')
-    parser.add_argument('size', nargs='?', action='store', default=1024, type=int, help='The size in KiB of the files to send. default is 1 MiB.')
-    parser.add_argument('chunk', nargs='?', action='store', default=None, type=int, help='The size in KiB of the chunks to send. default is 5 MiB.')
+    parser.add_argument('size', nargs='?', action='store', default=1000, type=int, help='The size in KB of the files to send. default is 1 MB.')
+    parser.add_argument('chunk', nargs='?', action='store', default=None, type=int, help='The size in KB of the chunks to send. default is 5 MB.')
     parser.add_argument('-m', '--m3u8', dest='m3u8', action='store_true', help='Use HLS upload API instead of chunked upload API.')
     parser.add_argument('-d', '--debug', dest='debug', action='store_true', help='Set log level to debug.')
     parser.add_argument('-5', '--md5', dest='md5', action='store_true', help='Check md5 or not when using chunked upload.')
@@ -33,16 +33,16 @@ if __name__ == '__main__':
 
     msc = MediaServerClient(args.conf)
     if args.chunk:
-        msc.conf['UPLOAD_CHUNK_SIZE'] = args.chunk * 1024
+        msc.conf['UPLOAD_CHUNK_SIZE'] = args.chunk * 1000
     msc.check_server()
 
     # generate test file
     tmp_path = '/tmp/ms-test-upload-file'
-    logger.info('Generating %s KiB of test content in "%s".', args.size, tmp_path)
+    logger.info('Generating %s KB of test content in "%s".', args.size, tmp_path)
     # possible characters
     chars = string.ascii_letters + '_' + string.digits + '-' + '\n'
     with open(tmp_path + '.m3u8', 'w') as fo:
-        for i in range(args.size * 1024):
+        for i in range(args.size * 1000):
             fo.write(chars[i % len(chars)])
     if os.path.isdir(tmp_path):
         shutil.rmtree(tmp_path)
@@ -80,8 +80,8 @@ if __name__ == '__main__':
         shutil.rmtree(tmp_path)
 
     logger.info('Number of files uploaded: %s.', args.count)
-    logger.info('Total size: %.2f MiB.', args.count * args.size / 1024)
-    logger.info('Average speed: %.2f KiB/s.', args.count * args.size / duration)
+    logger.info('Total size: %.2f MB.', args.count * args.size / 1000)
+    logger.info('Average speed: %.2f KB/s.', args.count * args.size / duration)
     logger.info('Upload duration: %.2f s.', duration)
 
     sys.exit(0)
