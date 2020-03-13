@@ -13,7 +13,7 @@ import time
 logger = logging.getLogger('ms_client.lib.upload')
 
 
-def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True):
+def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True, timeout=3600, max_retry=5):
     url_prefix = 'medias/resource/' if client.get_server_version() < (8, 2) else ''
     chunk_size = client.conf['UPLOAD_CHUNK_SIZE']
     total_size = os.path.getsize(file_path)
@@ -36,7 +36,7 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
                 md5sum.update(chunk)
             files = {'file': (os.path.basename(file_path), chunk)}
             headers = {'Content-Range': 'bytes %s-%s/%s' % (start_offset, end_offset, total_size)}
-            response = client.api(url_prefix + 'upload/', method='post', data=data, files=files, headers=headers, timeout=3600, max_retry=5)
+            response = client.api(url_prefix + 'upload/', method='post', data=data, files=files, headers=headers, timeout=timeout, max_retry=max_retry)
             if progress_callback:
                 pdata = progress_data or dict()
                 progress_callback(0.9 * end_offset / total_size, **pdata)
@@ -52,14 +52,14 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
         data['no_md5'] = 'yes'
     if remote_path:
         data['path'] = remote_path
-    response = client.api(url_prefix + 'upload/complete/', method='post', data=data, timeout=3600, max_retry=5)
+    response = client.api(url_prefix + 'upload/complete/', method='post', data=data, timeout=timeout, max_retry=max_retry)
     if progress_callback:
         pdata = progress_data or dict()
         progress_callback(1., **pdata)
     return data['upload_id']
 
 
-def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progress_data=None):
+def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progress_data=None, timeout=3600, max_retry=5):
     '''
     Method to upload an HLS video (m3u8 + ts fragments).
     This method is faster than "chunked_upload" because "chunked_upload" is very slow for a large number of tiny files.
@@ -109,7 +109,7 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
                 data[name] = str(size)
                 with open(path, 'rb') as fo:
                     files[name] = (name, fo.read())
-            response = client.api('upload/hls/', method='post', data=data, files=files, timeout=3600, max_retry=5)
+            response = client.api('upload/hls/', method='post', data=data, files=files, timeout=timeout, max_retry=max_retry)
             if progress_callback:
                 pdata = progress_data or dict()
                 progress_callback(total_files_count / len(ts_fragments), **pdata)
@@ -131,7 +131,7 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
         data[name] = str(size)
         with open(path, 'rb') as fo:
             files[name] = (name, fo.read())
-    client.api('upload/hls/', method='post', data=data, files=files, timeout=3600, max_retry=5)
+    client.api('upload/hls/', method='post', data=data, files=files, timeout=timeout, max_retry=max_retry)
     bandwidth = total_size * 8 / ((time.time() - begin) * 1000000)
     logger.info('Upload finished (%s files in "%s"), average bandwidth: %.2f Mbits/s', total_files_count, remote_dir, bandwidth)
     if progress_callback:

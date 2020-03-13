@@ -10,7 +10,7 @@ import os
 logger = logging.getLogger('ms_client.lib.content')
 
 
-def add_media(client, title=None, file_path=None, progress_callback=None, progress_data=None, **kwargs):
+def add_media(client, title=None, file_path=None, progress_callback=None, progress_data=None, timeout=3600, max_retry=None, **kwargs):
     if not title and not file_path:
         raise ValueError('You should give a title or a file to create a media.')
     client.get_server_version()  # ping server to test the connection and log version for debug
@@ -20,11 +20,11 @@ def add_media(client, title=None, file_path=None, progress_callback=None, progre
         metadata['title'] = title
     if file_path:
         metadata['code'] = client.chunked_upload(file_path, progress_callback=progress_callback, progress_data=progress_data)
-    response = client.api('medias/add/', method='post', data=metadata, timeout=3600)
+    response = client.api('medias/add/', method='post', data=metadata, timeout=timeout, max_retry=max_retry)
     return response
 
 
-def download_metadata_zip(client, media_oid, path, include_annotations=None, include_resources_links=None, force=False):
+def download_metadata_zip(client, media_oid, path, include_annotations=None, include_resources_links=None, force=False, timeout=3600, max_retry=None):
     if not media_oid:
         raise ValueError('You should give an object id to get the zip file.')
     valid_annotations = ('all', 'editorial', 'none')
@@ -36,29 +36,29 @@ def download_metadata_zip(client, media_oid, path, include_annotations=None, inc
     params = dict(oid=media_oid, annotations=include_annotations or 'none', resources=include_resources_links or 'no')
     if not force and os.path.isfile(path):
         size = str(os.path.getsize(path))
-        req = client.api('medias/get/zip/', method='head', params=params, timeout=3600)
+        req = client.api('medias/get/zip/', method='head', params=params, timeout=timeout, max_retry=max_retry)
         if req.headers.get('Content-Length') == size:
             logger.info('Skipping download of zip file for %s because the file already exists and has the correct size.', media_oid)
             return path
-    req = client.api('medias/get/zip/', method='get', params=params, timeout=3600, stream=True)
+    req = client.api('medias/get/zip/', method='get', params=params, timeout=timeout, max_retry=max_retry, stream=True)
     with open(path, 'wb') as fo:
         for chunk in req.iter_content(10000000):  # 10 MB chunks
             fo.write(chunk)
     return path
 
 
-def remove_all_content(client):
+def remove_all_content(client, timeout=None, max_retry=None):
     logger.info('Remove all content')
     channels = client.api('channels/tree/')['channels']
     while client.api('channels/tree')['channels']:
         for c in channels:
             c_oid = c['oid']
-            client.api('channels/delete/', method='post', data={'oid': c_oid, 'delete_content': 'yes'})
+            client.api('channels/delete/', method='post', data={'oid': c_oid, 'delete_content': 'yes'}, timeout=timeout, max_retry=max_retry)
             logger.info('Emptied channel %s' % c_oid)
         channels = client.api('channels/tree/')['channels']
 
 
-def download_zip(client, path, oid=None, slug=None, title=None, full=False, include_path=False, parents=None):
+def download_zip(client, path, oid=None, slug=None, title=None, full=False, include_path=False, parents=None, timeout=3600, max_retry=None):
     params = dict(full='yes' if full else 'no', path='yes' if include_path else 'no', parents=parents)
     if oid:
         params['oid'] = oid
@@ -68,7 +68,7 @@ def download_zip(client, path, oid=None, slug=None, title=None, full=False, incl
         params['title'] = title
     else:
         raise ValueError('You should give an oid or a slug to get the zip file.')
-    req = client.api('medias/get/zip/', method='get', params=params, timeout=3600, stream=True)
+    req = client.api('medias/get/zip/', method='get', params=params, timeout=timeout, max_retry=max_retry, stream=True)
     with open(path, 'wb') as fo:
         for chunk in req.iter_content(10000000):  # 10 MB chunks
             fo.write(chunk)

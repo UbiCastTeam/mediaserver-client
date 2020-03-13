@@ -10,7 +10,7 @@ import time
 logger = logging.getLogger('ms_client.lib.csv')
 
 
-def import_users_csv(client, csv_path):
+def import_users_csv(client, csv_path, timeout=None, max_retry=None):
     groupname = 'Users imported from csv on %s' % time.ctime()
     groupid = client.api('groups/add/', method='post', data={'name': groupname}).get('id')
     logger.info('Created group %s with id %s' % (groupname, groupid))
@@ -31,11 +31,11 @@ def import_users_csv(client, csv_path):
                 }
                 logger.info('Adding %s' % email)
                 try:
-                    logger.info(client.api('users/add/', method='post', data=user))
+                    logger.info(client.api('users/add/', method='post', data=user, timeout=timeout, max_retry=max_retry))
                 except Exception as e:
                     logger.error('Error: %s' % e)
                 logger.info('Adding user %s to group %s' % (email, groupname))
                 try:
-                    logger.info(client.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}))
+                    logger.info(client.api('groups/members/add/', method='post', data={'id': groupid, 'user_email': email}, timeout=timeout, max_retry=max_retry))
                 except Exception as e:
                     logger.error('Error: %s' % e)
