@@ -159,9 +159,6 @@ class MediaServerClient():
     def add_media(self, *args, **kwargs):
         return content_lib.add_media(self, *args, **kwargs)
 
-    def download_zip(self, *args, **kwargs):
-        return content_lib.download_zip(self, *args, **kwargs)
-
     def download_metadata_zip(self, *args, **kwargs):
         return content_lib.download_metadata_zip(self, *args, **kwargs)
 

@@ -56,20 +56,3 @@ def remove_all_content(client, timeout=None, max_retry=None):
             client.api('channels/delete/', method='post', data={'oid': c_oid, 'delete_content': 'yes'}, timeout=timeout, max_retry=max_retry)
             logger.info('Emptied channel %s' % c_oid)
         channels = client.api('channels/tree/')['channels']
-
-
-def download_zip(client, path, oid=None, slug=None, title=None, full=False, include_path=False, parents=None, timeout=3600, max_retry=None):
-    params = dict(full='yes' if full else 'no', path='yes' if include_path else 'no', parents=parents)
-    if oid:
-        params['oid'] = oid
-    elif slug:
-        params['slug'] = slug
-    elif title:
-        params['title'] = title
-    else:
-        raise ValueError('You should give an oid or a slug to get the zip file.')
-    req = client.api('medias/get/zip/', method='get', params=params, timeout=timeout, max_retry=max_retry, stream=True)
-    with open(path, 'wb') as fo:
-        for chunk in req.iter_content(10000000):  # 10 MB chunks
-            fo.write(chunk)
-    return path
