@@ -79,8 +79,6 @@ def check_conf(conf):
     if not conf.get('SERVER_URL') or conf['SERVER_URL'] == 'https://mediaserver':
         raise ValueError('The value of "SERVER_URL" is not set. Please configure it.')
     conf['SERVER_URL'] = conf['SERVER_URL'].strip('/')
-    if not conf.get('API_KEY'):
-        raise ValueError('The value of "API_KEY" is not set. Please configure it.')
 
 
 def get_conf_for_unix_user(user):
