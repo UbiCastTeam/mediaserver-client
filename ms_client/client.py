@@ -79,18 +79,20 @@ class MediaServerClient():
         if self.session is None and self.conf['USE_SESSION']:
             self.session = requests.Session()
 
-        if method == 'get':
-            req_function = self.session.get if self.session is not None else requests.get
+        if method in ['get', 'head']:
             params = params or dict()
-            params['api_key'] = self.conf['API_KEY']
-        elif method == 'head':
-            req_function = self.session.head if self.session is not None else requests.head
-            params = params or dict()
-            params['api_key'] = self.conf['API_KEY']
+            if self.conf.get('API_KEY'):
+                params['api_key'] = self.conf['API_KEY']
+
+            if method == 'get':
+                req_function = self.session.get if self.session is not None else requests.get
+            elif method == 'head':
+                req_function = self.session.head if self.session is not None else requests.head
         else:
             req_function = self.session.post if self.session is not None else requests.post
             data = data or dict()
-            data['api_key'] = self.conf['API_KEY']
+            if self.conf.get('API_KEY'):
+                data['api_key'] = self.conf['API_KEY']
 
         req = req_function(
             url=url,
