@@ -114,7 +114,7 @@ def get_conf_for_unix_user(user):
     out = out.decode('utf-8') if out else ''
     if err:
         out += '\n' + err.decode('utf-8')
-    m = re.match(r'site_url:(.*)\nmaster_api_key:(.*)\nresources_secret:(.*)', out)
+    m = re.search(r'site_url:(.*)\nmaster_api_key:(.*)\nresources_secret:(.*)', out)
     if not m:
         raise Exception('Failed to get instance settings:\n%s' % out)
     site_url, master_api_key, resources_secret = m.groups()
