@@ -32,10 +32,11 @@ def transcode_all_videos(msc, priority):
             index += 1
             print('// Media %s: %s' % (index, item['oid']))
             try:
+                # behavior: action to do on existing resources
                 msc.api('medias/task/', method='post', data=dict(
                     oid=item['oid'],
                     task='transcoding',
-                    params=json.dumps(dict(priority=priority or DEFAULT_TASKS_PRIORITY, delete_extra_files=True))
+                    params=json.dumps(dict(priority=priority or DEFAULT_TASKS_PRIORITY, behavior='delete'))
                 ), timeout=300)
             except Exception as e:
                 if 'has no usable ressources' in str(e):
