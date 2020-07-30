@@ -79,6 +79,10 @@ class MediaServerClient():
         if self.session is None and self.conf['USE_SESSION']:
             self.session = requests.Session()
 
+        if headers is None:
+            headers = {}
+        headers["Accept-Language"] = "en"
+
         if method in ['get', 'head']:
             params = params or dict()
             if self.conf.get('API_KEY'):
