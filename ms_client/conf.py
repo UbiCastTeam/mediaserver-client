@@ -14,6 +14,11 @@ BASE_CONF = {
     # Client name used as origin name of added media
     'CLIENT_ID': 'python-api-client',
 
+    # Language for API messages
+    # Use None to use MediaServer default language
+    # Supported languages are 'en' or 'fr'.
+    'LANGUAGE': 'en',
+
     # Use a persistent session for requests
     'USE_SESSION': True,
 

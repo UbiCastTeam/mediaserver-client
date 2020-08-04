@@ -80,9 +80,9 @@ class MediaServerClient():
             self.session = requests.Session()
 
         if headers is None:
-            headers = {}
-        # prefer english language for api responses (e.g. for error handling)
-        headers.setdefault("Accept-Language", "en")
+            headers = dict()
+        if self.conf.get('LANGUAGE'):
+            headers.setdefault('Accept-Language', self.conf['LANGUAGE'])
 
         if method in ['get', 'head']:
             params = params or dict()
