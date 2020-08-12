@@ -37,6 +37,14 @@ The client class (`ms_client`.`client`.`MediaServerClient`) takes two arguments:
 * `setup_logging`: This argument must be a boolean. If set to `True`, the logging to console will be configured. The default value is `True`.
 
 
+## Configuration
+
+You can see available parameters in the default configuration file :
+[Default configuration](/ms_client/conf.py)
+
+The local configuration should be a json file.
+
+
 ## Notes about older client
 
 If you are using the first version of this client (a single file named mediaserver_api_client.py), here are the steps to update your client:
