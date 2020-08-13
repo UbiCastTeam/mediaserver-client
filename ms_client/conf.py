@@ -29,9 +29,10 @@ BASE_CONF = {
     'TIMEOUT': 10,
 
     # Proxies for API requests
-    # Set this to `null` to use your system default value
-    # Example: {'http': 'http://10.10.1.10:3128', 'https': 'http://10.10.1.10:1080'}
-    'PROXIES': {'http': '', 'https': ''},
+    # To use system proxies: None (proxies should be set in environment)
+    # To disable proxies: {'http': '', 'https': ''}
+    # To use a proxy: {'http': 'http://10.10.1.10:3128', 'https': 'http://10.10.1.10:1080'}
+    'PROXIES': None,
 
     # Chunk size for uploads
     'UPLOAD_CHUNK_SIZE': 5242880,
