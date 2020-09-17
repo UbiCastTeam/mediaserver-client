@@ -13,6 +13,8 @@ logger = logging.getLogger('ms_client.lib.content')
 def add_media(client, title=None, file_path=None, progress_callback=None, progress_data=None, timeout=3600, max_retry=None, **kwargs):
     if not title and not file_path:
         raise ValueError('You should give a title or a file to create a media.')
+    if file_path is not None and os.path.getsize(file_path) == 0:
+        raise Exception('File is empty: %s' % file_path)
     client.get_server_version()  # ping server to test the connection and log version for debug
     metadata = kwargs
     metadata['origin'] = client.conf['CLIENT_ID']
