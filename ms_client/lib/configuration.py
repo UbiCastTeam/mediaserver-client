@@ -7,7 +7,6 @@ This module is not intended to be used directly, only the client class should be
 import os
 import re
 import json
-import types
 import logging
 import subprocess
 from ..conf import BASE_CONF
@@ -96,33 +95,47 @@ def get_conf_for_unix_user(user):
     mssettings_path = os.path.join(instance_dir, 'conf', 'mssettings.py')
     with open(mssettings_path, 'r') as fo:
         content = fo.read().replace('\r', '')
-    if 'DATABASES' not in content:
-        raise Exception('Failed to get instance db settings, no configuration found in mssettings.')
-    content = content[content.index('\nDATABASES'):]
-    content = content[:content.index('\n}') + 2]
-    dbs_module = types.ModuleType('dbs_module')
-    exec(content, dbs_module.__dict__)
 
     # get MS site settings
-    cmd = 'python3 %s shell -i python' % os.path.join(instance_dir, 'manage.py')
-    if os.environ.get('USER') == user:
-        cmd = ['bash', '-c', cmd]
+    SITE_URL = None
+    MASTER_API_KEY = None
+    RESOURCES_SECRET = None
+    if 'SITE_URL' in content:
+        # Settings stored in file
+        logger.info('Loading settings from file.')
+        res = re.search(r'SITE_URL\s*=\s*[\'|"]{1}(.*)[\'|"]{1}\n', content)
+        if res:
+            SITE_URL = res.groups()[0]
+        res = re.search(r'MASTER_API_KEY\s*=\s*[\'|"]{1}(.*)[\'|"]{1}\n', content)
+        if res:
+            MASTER_API_KEY = res.groups()[0]
+        res = re.search(r'RESOURCES_SECRET\s*=\s*[\'|"]{1}(.*)[\'|"]{1}\n', content)
+        if res:
+            RESOURCES_SECRET = res.groups()[0]
     else:
-        cmd = ['su', user, '-c', cmd]
-    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate(input=('from mediaserver.main.models import SiteSettings; ms_ss=SiteSettings.get_singleton(); print("site_url:%s" % ms_ss.site_url); print("master_api_key:%s" % ms_ss.master_api_key); print("resources_secret:%s" % ms_ss.resources_secret);').encode('utf-8'))
-    out = out.decode('utf-8') if out else ''
-    if err:
-        out += '\n' + err.decode('utf-8')
-    m = re.search(r'site_url:(.*)\nmaster_api_key:(.*)\nresources_secret:(.*)', out)
-    if not m:
+        # Settings stored in database (deprecated)
+        logger.info('Loading settings from database.')
+        cmd = 'python3 %s shell -i python' % os.path.join(instance_dir, 'manage.py')
+        if os.environ.get('USER') == user:
+            cmd = ['bash', '-c', cmd]
+        else:
+            cmd = ['su', user, '-c', cmd]
+        p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate(input=('from mediaserver.main.models import SiteSettings; ms_ss=SiteSettings.get_singleton(); print("site_url:%s" % ms_ss.site_url); print("master_api_key:%s" % ms_ss.master_api_key); print("resources_secret:%s" % ms_ss.resources_secret);').encode('utf-8'))
+        out = out.decode('utf-8') if out else ''
+        if err:
+            out += '\n' + err.decode('utf-8')
+        matching = re.search(r'site_url:(.*)\nmaster_api_key:(.*)\nresources_secret:(.*)', out)
+        if matching:
+            SITE_URL, MASTER_API_KEY, RESOURCES_SECRET = matching.groups()
+    if SITE_URL is None or MASTER_API_KEY is None or RESOURCES_SECRET is None:
         raise Exception('Failed to get instance settings:\n%s' % out)
-    site_url, master_api_key, resources_secret = m.groups()
+    logger.debug('MediaServer URL: %s', SITE_URL)
 
     # prepare client configuration
     conf = dict(
-        SECURE_LINK=True if resources_secret else False,  # just for information, not used in the client
-        SERVER_URL=site_url,
-        API_KEY=master_api_key,
+        SECURE_LINK=True if RESOURCES_SECRET else False,  # just for information, not used in the client
+        SERVER_URL=SITE_URL,
+        API_KEY=MASTER_API_KEY,
     )
     return conf
