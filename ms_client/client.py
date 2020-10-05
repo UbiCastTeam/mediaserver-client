@@ -139,19 +139,22 @@ class MediaServerClient():
         kwargs['url'] = self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
         max_retry = kwargs.pop('max_retry', None)
         if max_retry:
-            retry_count = 0
+            retry_count = 1
             while True:
                 try:
                     result = self.request(*args, **kwargs)
                     break
                 except Exception as e:
-                    # do not retry when getting a 40X error
-                    if retry_count >= max_retry or 'HTTP 40' in str(e):
+                    error_string = str(e)
+                    # retry random HTTP 400 errors "Offsets do not match"
+                    if 'HTTP 400' not in error_string and (retry_count >= max_retry or 'HTTP 40' in error_string):
                         raise
                     else:
+                        # wait longer after every attempt
+                        retry_time_s = 3 * retry_count * retry_count
+                        logger.error('Request on %s failed (tried %s times), retrying in %ss, error was: %s' % (suffix, retry_count, retry_time_s, error_string))
                         retry_count += 1
-                        logger.error('Request on %s failed (tried %s times): %s', suffix, retry_count, e)
-                        time.sleep(3 * retry_count * retry_count)
+                        time.sleep(retry_time_s)
                         # seek to 0 in file objects
                         # (file objects using a value different from 0 as initial position is not supported)
                         if kwargs.get('files'):
