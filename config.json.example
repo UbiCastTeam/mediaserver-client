@@ -1,0 +1,11 @@
+{
+    "API_KEY": "MYAPIKEY",
+    "CLIENT_ID": "python-api-client",
+    "PROXIES": {
+        "http": "",
+        "https": ""
+    },
+    "SERVER_URL": "https://mymediaserver.ubicast.tv",
+    "UPLOAD_CHUNK_SIZE": 5242880,
+    "VERIFY_SSL": false
+}
