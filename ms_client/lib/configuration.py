@@ -84,14 +84,13 @@ def get_conf_for_unix_user(user):
     user = user.strip()
     if not user:
         raise ValueError('Invalid unix user provided.')
-    # override config with data from user db
+
     instance_dir = '/home/%s/msinstance' % user
     if not os.path.exists(instance_dir):
         raise Exception('Instance dir "%s" does not exists.' % instance_dir)
     logger.info('Retrieving configuration from MS user "%s".', user)
 
-    # get MS db settings
-    # do not load entire module to avoid errors
+    # get MS settings, do not load module to avoid import errors
     mssettings_path = os.path.join(instance_dir, 'conf', 'mssettings.py')
     with open(mssettings_path, 'r') as fo:
         content = fo.read().replace('\r', '')
@@ -128,8 +127,10 @@ def get_conf_for_unix_user(user):
         matching = re.search(r'site_url:(.*)\nmaster_api_key:(.*)\nresources_secret:(.*)', out)
         if matching:
             SITE_URL, MASTER_API_KEY, RESOURCES_SECRET = matching.groups()
-    if SITE_URL is None or MASTER_API_KEY is None or RESOURCES_SECRET is None:
-        raise Exception('Failed to get instance settings:\n%s' % out)
+    if SITE_URL is None:
+        raise Exception('Failed to get site URL from instance settings.')
+    if MASTER_API_KEY is None:
+        raise Exception('Failed to get master API key from instance settings.')
     logger.debug('MediaServer URL: %s', SITE_URL)
 
     # prepare client configuration
