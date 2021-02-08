@@ -13,7 +13,7 @@ import time
 logger = logging.getLogger('ms_client.lib.upload')
 
 
-def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True, timeout=3600, max_retry=5):
+def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True, timeout=3600, max_retry=10):
     url_prefix = 'medias/resource/' if client.get_server_version() < (8, 2) else ''
     chunk_size = client.conf['UPLOAD_CHUNK_SIZE']
     total_size = os.path.getsize(file_path)
@@ -59,7 +59,7 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
     return data['upload_id']
 
 
-def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progress_data=None, timeout=3600, max_retry=5):
+def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progress_data=None, timeout=3600, max_retry=10):
     '''
     Method to upload an HLS video (m3u8 + ts fragments).
     This method is faster than "chunked_upload" because "chunked_upload" is very slow for a large number of tiny files.

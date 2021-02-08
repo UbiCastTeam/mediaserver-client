@@ -145,14 +145,13 @@ class MediaServerClient():
                     result = self.request(*args, **kwargs)
                     break
                 except Exception as e:
-                    error_string = str(e)
                     # retry random HTTP 400 errors "Offsets do not match"
-                    if 'HTTP 400' not in error_string and (retry_count >= max_retry or 'HTTP 40' in error_string):
+                    if retry_count >= max_retry:
                         raise
                     else:
                         # wait longer after every attempt
                         retry_time_s = 3 * retry_count * retry_count
-                        logger.error('Request on %s failed (tried %s times), retrying in %ss, error was: %s' % (suffix, retry_count, retry_time_s, error_string))
+                        logger.error('Request on %s failed (tried %s times, max %s), retrying in %ss, error was: %s' % (suffix, retry_count, max_retry, retry_time_s, e))
                         retry_count += 1
                         time.sleep(retry_time_s)
                         # seek to 0 in file objects
