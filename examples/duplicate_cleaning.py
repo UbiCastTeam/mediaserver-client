@@ -18,63 +18,61 @@ def get_key_from_value_dict(videos_reference, search_value, search_field):
     return void_list
 
 
-def find_duplicate(msc, channel_parent_oid, enable_delete=False):
-
-    videos_reference = dict()
+def process_channel(msc, channel_info, enable_delete=False, videos_reference=None):
+    if videos_reference is None:
+        videos_reference = dict()
     ms_url = msc.conf['SERVER_URL'] + '/permalink/'
 
-    # Check if parent channel oid exists
-    try:
-        channel_parent = msc.api('channels/get/', method='get', params=dict(oid=channel_parent_oid))
-    except Exception:
-        print('Please enter valid channel oid.')
-        return 1
-
-    print('Parent Channel is %s' % channel_parent['info']['title'])
-
-    channel_tree = msc.api('/channels/tree/', method='get', params=dict(parent_oid=channel_parent_oid, recursive='yes'))['channels']
-
     # Browse channels from channel parent
-    for channel in channel_tree:
-        print('Check videos in channel %s' % (channel['title']))
-        videos_oid = msc.api('channels/content/', method='get', params=dict(parent_oid=channel['oid'], content='v'))
+    print('Check videos in channel %s %s' % (channel_info['oid'], channel_info['title']))
+    channel_items = msc.api('channels/content/', method='get', params=dict(parent_oid=channel_info['oid'], content='cv'))
 
-        # Check if there are videos in the channel otherwise skip
-        if(len(videos_oid.keys()) == 1):
+    # Check sub channels
+    for entry in channel_items.get('channels', []):
+        process_channel(msc, entry, enable_delete=enable_delete, videos_reference=videos_reference)
+
+    # Get video informations
+    for entry in channel_items.get('videos', []):
+        date_creation = re.search(r'\d{4}-\d{2}-\d{2}', entry['creation'])
+
+        video_title = entry['title']
+        video_oid = entry['oid']
+        video_duration = entry['duration']
+        video_creation = date_creation.group()
+
+        # Get key (video oid) from video title
+        list_oids = get_key_from_value_dict(videos_reference, video_title, 'title')
+
+        # Add video to videos reference as it does not exist
+        if not list_oids:
+            videos_reference[video_oid] = {'title': video_title, 'duration': video_duration, 'creation': video_creation}
             continue
+        for list_oid in list_oids:
+            if videos_reference[list_oid]['title'] == video_title:
+                if videos_reference[list_oid]['duration'] == video_duration and videos_reference[list_oid]['creation'] == video_creation:
+                    print('Video  %s is duplicate of %s' % (ms_url + video_oid, ms_url + list_oid))
+                    if enable_delete:
+                        try:
+                            # msc.api('medias/delete/', method='post', data=dict(oid=video_oid, delete_metadata='yes', delete_resources='yes'))
+                            msc.api('medias/edit/', method='post', data=dict(oid=video_oid, description='Duplicate of ' + ms_url + list_oid))
+                        except Exception as e:
+                            print('Failed to delete media %s: %s' % (video_title, e))
+                        else:
+                            print('Media %s has been deleted successfully from MediaServer.' % video_title)
+                else:
+                    # Add video with same title but different duration or creation date
+                    videos_reference[video_oid] = {'title': video_title, 'duration': video_duration, 'creation': video_creation}
 
-        # Get video informations
-        for video_oid in videos_oid['videos']:
-            video_info = msc.api('medias/get/', method='get', params=dict(oid=video_oid['oid']))['info']
-            date_creation = re.search(r'\d{4}-\d{2}-\d{2}', video_info['creation'])
 
-            video_title = video_info['title']
-            video_oid = video_info['oid']
-            video_duration = video_info['duration']
-            video_creation = date_creation.group()
-
-            # Get key (video oid) from video title
-            list_oids = get_key_from_value_dict(videos_reference, video_title, 'title')
-
-            # Add video to videos reference as it does not exist
-            if not list_oids:
-                videos_reference[video_oid] = {'title': video_title, 'duration': video_duration, 'creation': video_creation}
-                continue
-            for list_oid in list_oids:
-                if videos_reference[list_oid]['title'] == video_title:
-                    if videos_reference[list_oid]['duration'] == video_duration and videos_reference[list_oid]['creation'] == video_creation:
-                        print('Video  %s is duplicate of %s' % (ms_url + video_oid, ms_url + list_oid))
-                        if enable_delete:
-                            try:
-                                # msc.api('medias/delete/', method='post', data=dict(oid=video_oid, delete_metadata='yes', delete_resources='yes'))
-                                msc.api('medias/edit/', method='post', data=dict(oid=video_oid, description='Duplicate of ' + ms_url + list_oid))
-                            except Exception as e:
-                                print('Failed to delete media %s: %s' % (video_title, e))
-                            else:
-                                print('Media %s has been deleted successfully from MediaServer.' % video_title)
-                    else:
-                        # Add video with same title but different duration or creation date
-                        videos_reference[video_oid] = {'title': video_title, 'duration': video_duration, 'creation': video_creation}
+def find_duplicate(msc, channel_oid, enable_delete=False):
+    # Check if channel oid exists
+    try:
+        channel_parent = msc.api('channels/get/', method='get', params=dict(oid=channel_oid))
+    except Exception as e:
+        print('Please enter valid channel oid or check access permissions. Error when trying to get channel was: %s' % e)
+        return 1
+    print('Parent Channel is %s' % channel_parent['info']['title'])
+    process_channel(msc, channel_parent['info'], enable_delete=enable_delete)
     return 0
 
 
@@ -86,15 +84,15 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--conf',
-        dest='configuration_path',
+        dest='configuration',
         help='Path to the configuration file.',
         required=True,
         type=str)
 
     parser.add_argument(
-        '--channel_parent',
-        dest='channel_parent_oid',
-        help='Channel Parent oid to check',
+        '--channel',
+        dest='channel_oid',
+        help='Channel oid to check.',
         required=True,
         type=str)
 
@@ -107,17 +105,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    print('Configuration path: %s' % args.configuration_path)
-    print('Parent channel oid: %s' % args.channel_parent_oid)
+    print('Configuration path: %s' % args.configuration)
+    print('Parent channel oid: %s' % args.channel_oid)
     print('Enable delete: %s' % args.enable_delete)
 
     # Check if configuration file exists
-    if not args.configuration_path.startswith('unix:') and not os.path.exists(args.configuration_path):
+    if not args.configuration.startswith('unix:') and not os.path.exists(args.configuration_path):
         print('Invalid path for configuration file.')
         sys.exit(1)
 
-    msc = MediaServerClient(args.configuration_path)
+    msc = MediaServerClient(args.configuration)
     msc.check_server()
 
-    rc = find_duplicate(msc, args.channel_parent_oid, args.enable_delete)
+    rc = find_duplicate(msc, args.channel_oid, args.enable_delete)
     sys.exit(rc)
