@@ -110,7 +110,7 @@ if __name__ == '__main__':
     print('Enable delete: %s' % args.enable_delete)
 
     # Check if configuration file exists
-    if not args.configuration.startswith('unix:') and not os.path.exists(args.configuration_path):
+    if not args.configuration.startswith('unix:') and not os.path.exists(args.configuration):
         print('Invalid path for configuration file.')
         sys.exit(1)
 
