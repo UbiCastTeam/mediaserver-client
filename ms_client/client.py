@@ -19,6 +19,7 @@ logger = logging.getLogger('ms_client.client')
 class MediaServerRequestError(Exception):
     def __init__(self, *args, **kwargs):
         self.status_code = kwargs.pop('status_code', None)
+        self.error_code = kwargs.pop('error_code', None)
         super().__init__(*args, **kwargs)
 
 
@@ -76,7 +77,11 @@ class MediaServerClient():
                 version_str = response.get('mediaserver') or '6.5.4'  # "mediaserver" key was added in version 6.6.0
                 self._server_version = tuple([int(i) for i in version_str.split('.')])
             except Exception as e:
-                raise MediaServerRequestError('Failed to get MediaServer version: %s' % e, status_code=getattr(e, 'status_code', None))
+                raise MediaServerRequestError(
+                    'Failed to get MediaServer version: %s' % e,
+                    status_code=getattr(e, 'status_code', None),
+                    error_code=getattr(e, 'error_code', None)
+                )
             else:
                 logger.debug('MediaServer version is: %s', self._server_version)
         return self._server_version
@@ -120,14 +125,32 @@ class MediaServerClient():
             logger.info('404 ignored on url %s.' % url)
             return None
         if req.status_code != 200:
-            raise MediaServerRequestError('HTTP %s error on %s: %s' % (req.status_code, url, req.text), status_code=req.status_code)
+            error_message = req.text
+            error_code = None
+            if parse_json:
+                try:
+                    response = req.json()
+                    error_message = response.get('error') or response.get('errors') or response.get('message') or error_message
+                    error_code = response.get('code')
+                except Exception:
+                    pass
+            raise MediaServerRequestError(
+                'HTTP %s error on %s: %s' % (req.status_code, url, error_message),
+                status_code=req.status_code,
+                error_code=error_code
+            )
         if stream or method == 'head':
             response = req
         elif parse_json:
             response = req.json()
             if 'success' in response and not response['success']:
                 error_message = response.get('error') or response.get('errors') or response.get('message') or 'No information on error.'
-                raise MediaServerRequestError('API call failed: %s' % error_message, status_code=req.status_code)
+                error_code = response.get('code')
+                raise MediaServerRequestError(
+                    'API call failed: %s' % error_message,
+                    status_code=req.status_code,
+                    error_code=error_code
+                )
         else:
             response = req.text.strip()
         return response
