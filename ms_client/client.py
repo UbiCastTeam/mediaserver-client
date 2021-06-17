@@ -160,7 +160,7 @@ class MediaServerClient():
 
         begin = time.time()
         kwargs['url'] = self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
-        max_retry = kwargs.pop('max_retry', None)
+        max_retry = kwargs.pop('max_retry', self.conf['MAX_RETRY'])
         if max_retry:
             retry_count = 1
             while True:

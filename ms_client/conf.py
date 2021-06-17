@@ -22,6 +22,10 @@ BASE_CONF = {
     # Use a persistent session for requests
     'USE_SESSION': True,
 
+    # If failures should be auto-retried N times
+    # disabled by default
+    'MAX_RETRY': None,
+
     # Check server SSL(TLS) certificate
     'VERIFY_SSL': False,
 
