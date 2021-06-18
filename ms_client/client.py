@@ -86,9 +86,13 @@ class MediaServerClient():
                 logger.debug('MediaServer version is: %s', self._server_version)
         return self._server_version
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, ignore_404=False, stream=False, ignored_status_codes=None):
+    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, ignore_404=False, stream=False, ignored_status_codes=None, ignored_error_strings=None):
         if ignored_status_codes is None:
             ignored_status_codes = list()
+
+        if ignored_error_strings is None:
+            ignored_error_strings = list()
+
         if ignore_404:
             if 404 not in ignored_status_codes:
                 ignored_status_codes.append(404)
@@ -150,10 +154,15 @@ class MediaServerClient():
         if stream or method == 'head':
             response = req
         elif parse_json:
+            # code is 200
             response = req.json()
             if 'success' in response and not response['success']:
                 error_message = response.get('error') or response.get('errors') or response.get('message') or 'No information on error.'
                 error_code = response.get('code')
+                for string in ignored_error_strings:
+                    if string in str(error_message):
+                        logger.info('Ignoring error on url %s : %s' % (url, error_message))
+                        return None
                 raise MediaServerRequestError(
                     'API call failed: %s' % error_message,
                     status_code=status_code,
