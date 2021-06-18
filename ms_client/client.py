@@ -86,7 +86,13 @@ class MediaServerClient():
                 logger.debug('MediaServer version is: %s', self._server_version)
         return self._server_version
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, ignore_404=False, stream=False):
+    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, ignore_404=False, stream=False, ignored_status_codes=None):
+        if ignored_status_codes is None:
+            ignored_status_codes = list()
+        if ignore_404:
+            if 404 not in ignored_status_codes:
+                ignored_status_codes.append(404)
+
         if self.session is None and self.conf['USE_SESSION']:
             self.session = requests.Session()
 
@@ -121,10 +127,11 @@ class MediaServerClient():
             proxies=self.conf['PROXIES'],
             verify=self.conf['VERIFY_SSL'],
         )
-        if req.status_code == 404 and ignore_404:
-            logger.info('404 ignored on url %s.' % url)
+        status_code = req.status_code
+        if ignored_status_codes and status_code in ignored_status_codes:
+            logger.info('Status code %s on url %s ignored' % (status_code, url))
             return None
-        if req.status_code != 200:
+        if status_code != 200:
             error_message = req.text
             error_code = None
             if parse_json:
@@ -135,8 +142,8 @@ class MediaServerClient():
                 except Exception:
                     pass
             raise MediaServerRequestError(
-                'HTTP %s error on %s: %s' % (req.status_code, url, error_message),
-                status_code=req.status_code,
+                'HTTP %s error on %s: %s' % (status_code, url, error_message),
+                status_code=status_code,
                 error_code=error_code
             )
         if stream or method == 'head':
@@ -148,7 +155,7 @@ class MediaServerClient():
                 error_code = response.get('code')
                 raise MediaServerRequestError(
                     'API call failed: %s' % error_message,
-                    status_code=req.status_code,
+                    status_code=status_code,
                     error_code=error_code
                 )
         else:
@@ -163,9 +170,10 @@ class MediaServerClient():
         max_retry = kwargs.pop('max_retry', self.conf['MAX_RETRY'])
         if max_retry:
             retry_count = 1
+            ignored_status_codes = kwargs.pop('ignored_status_codes', self.conf['RETRY_EXCEPT'])
             while True:
                 try:
-                    result = self.request(*args, **kwargs)
+                    result = self.request(*args, **kwargs, ignored_status_codes=ignored_status_codes)
                     break
                 except Exception as e:
                     # retry random HTTP 400 errors "Offsets do not match"

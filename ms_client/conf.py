@@ -26,6 +26,9 @@ BASE_CONF = {
     # disabled by default
     'MAX_RETRY': None,
 
+    # List of status codes that should not trigger a retry
+    'RETRY_EXCEPT': [403, 404],
+
     # Check server SSL(TLS) certificate
     'VERIFY_SSL': False,
 
