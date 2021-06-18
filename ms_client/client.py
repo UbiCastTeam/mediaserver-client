@@ -129,7 +129,8 @@ class MediaServerClient():
         )
         status_code = req.status_code
         if ignored_status_codes and status_code in ignored_status_codes:
-            logger.info('Status code %s on url %s ignored' % (status_code, url))
+            response_text = ', response text was: ' + req.text[:300] if req.text else ''
+            logger.info('Status code %s on url %s ignored' % (status_code, url) + response_text)
             return None
         if status_code != 200:
             error_message = req.text
@@ -176,7 +177,7 @@ class MediaServerClient():
                     result = self.request(*args, **kwargs, ignored_status_codes=ignored_status_codes)
                     break
                 except Exception as e:
-                    # retry random HTTP 400 errors "Offsets do not match"
+                    # retry after errors like HTTP 400 errors "Offsets do not match", timeout or RemoteDisconnected errors
                     if retry_count >= max_retry:
                         raise
                     else:
