@@ -86,16 +86,12 @@ class MediaServerClient():
                 logger.debug('MediaServer version is: %s', self._server_version)
         return self._server_version
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, ignore_404=False, stream=False, ignored_status_codes=None, ignored_error_strings=None):
+    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, stream=False, ignored_status_codes=None, ignored_error_strings=None):
         if ignored_status_codes is None:
             ignored_status_codes = list()
 
         if ignored_error_strings is None:
             ignored_error_strings = list()
-
-        if ignore_404:
-            if 404 not in ignored_status_codes:
-                ignored_status_codes.append(404)
 
         if self.session is None and self.conf['USE_SESSION']:
             self.session = requests.Session()
