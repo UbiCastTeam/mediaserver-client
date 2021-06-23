@@ -132,12 +132,8 @@ class MediaServerClient():
             verify=self.conf['VERIFY_SSL'],
         )
         status_code = req.status_code
-        if ignored_status_codes and status_code in ignored_status_codes:
-            response_text = ', response text was: ' + req.text[:300] if req.text else ''
-            logger.info('Status code %s on url %s ignored' % (status_code, url) + response_text)
-            return None
         if status_code != 200:
-            error_message = req.text
+            error_message = req.text[:300]
             error_code = None
             if parse_json:
                 try:
@@ -146,11 +142,17 @@ class MediaServerClient():
                     error_code = response.get('code')
                 except Exception:
                     pass
-            raise MediaServerRequestError(
-                'HTTP %s error on %s: %s' % (status_code, url, error_message),
-                status_code=status_code,
-                error_code=error_code
-            )
+
+            # ignored status codes do not trigger retries nor raise exceptions
+            if ignored_status_codes and status_code in ignored_status_codes:
+                logger.info('Not raising exception for ignored status code %s on url %s ignored: %s' % (status_code, url, response))
+                return response
+            else:
+                raise MediaServerRequestError(
+                    'HTTP %s error on %s: %s' % (status_code, url, error_message),
+                    status_code=status_code,
+                    error_code=error_code
+                )
         if stream or method == 'head':
             response = req
         elif parse_json:
