@@ -196,9 +196,31 @@ class MediaServerClient():
                         # seek to 0 in file objects
                         # (file objects using a value different from 0 as initial position is not supported)
                         if kwargs.get('files'):
-                            for file_o in kwargs['files']:
-                                if hasattr(file_o, 'seek'):
-                                    file_o.seek(0)
+                            # python-requests supports the following files arguments:
+                            # files = {'file': open('report.xls', 'rb')}
+                            # files = {'file': tuple}
+                            # 2-tuples (filename, fileobj)
+                            # 3-tuples (filename, fileobj, contentype)
+                            # 4-tuples (filename, fileobj, contentype, custom_headers)
+
+                            files = kwargs['files']
+
+                            def is_fd(obj):
+                                return hasattr(obj, 'seek')
+
+                            for key, val in files.items():
+                                fd = None
+
+                                if is_fd(val):
+                                    fd = val
+                                else:
+                                    for item in val:
+                                        if is_fd(item):
+                                            fd = item
+
+                                if fd:
+                                    logger.debug('Seeking file descriptor to 0')
+                                    fd.seek(0)
         else:
             result = self.request(*args, **kwargs)
         logger.debug('API call duration: %.2f s - %s', time.time() - begin, suffix)
