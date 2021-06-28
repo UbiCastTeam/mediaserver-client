@@ -15,10 +15,7 @@ import os
 import sys
 
 
-DEFAULT_TASKS_PRIORITY = 5
-
-
-def transcode_all_videos(msc, priority):
+def transcode_all_videos(msc):
     more = True
     start = ''
     index = 0
@@ -36,7 +33,7 @@ def transcode_all_videos(msc, priority):
                 msc.api('medias/task/', method='post', data=dict(
                     oid=item['oid'],
                     task='transcoding',
-                    params=json.dumps(dict(priority=priority or DEFAULT_TASKS_PRIORITY, behavior='delete'))
+                    params=json.dumps(dict(priority='low', behavior='delete'))
                 ), timeout=300)
             except Exception as e:
                 if 'has no usable ressources' in str(e):
@@ -63,6 +60,4 @@ if __name__ == '__main__':
     msc = MediaServerClient(local_conf)
     msc.check_server()
 
-    priority = int(sys.argv[2] if len(sys.argv) > 2 else '0')
-
-    transcode_all_videos(msc, priority)
+    transcode_all_videos(msc)
