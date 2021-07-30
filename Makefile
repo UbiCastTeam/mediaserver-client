@@ -2,20 +2,17 @@ PYFILES = ms_client/ examples/
 
 all:
 
-format:
-	black ${PYFILES}
-
 lint:
 	flake8 ${PYFILES}
 
-develop:
-	pip install -e .[dev]
+test:
+	python3 -m unittest discover tests/ -v
 
 build: clean
 	python setup.py sdist bdist_wheel
 
 install: build
-	pip install -I dist/mediaserver_api_client-*.whl
+	pip install -I dist/*.whl
 
 publish_dry: build
 	twine check dist/*.{whl,tar.gz}

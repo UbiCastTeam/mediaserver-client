@@ -31,6 +31,7 @@ var/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
+*.log
 
 # Unit test / coverage reports
 htmlcov/
@@ -47,8 +48,8 @@ coverage.xml
 *.mo
 *.pot
 
-# Django stuff:
-*.log
+# Confs
+conf*.json
 
 # Sphinx documentation
 docs/_build/
@@ -56,8 +57,5 @@ docs/_build/
 # PyBuilder
 target/
 
-#Ipython Notebook
+# Ipython Notebook
 .ipynb_checkpoints
-
-# MediaServer client
-config.json
