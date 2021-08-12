@@ -18,10 +18,12 @@ def do_request(*args, **kwargs):
     return response
 
 
-def subtitle_all_videos(max_items):
+def subtitle_all_videos(args):
     total = 0
     launched = 0
     has_subs = 0
+    validated = 0
+    unvalidated_subs = 0
     cannot_launch = 0
 
     more = True
@@ -53,8 +55,20 @@ def subtitle_all_videos(max_items):
                     print(r)
             else:
                 has_subs += 1
+                for s in subs:
+                    if not s['validated']:
+                        if args.validate_subs:
+                            print(f'Validate {s}')
+                            r = do_request(
+                                'subtitles/validate/',
+                                method='post',
+                                data=dict(id=s['id'])
+                            )
+                            validated += 1
+                        else:
+                            unvalidated_subs += 1
 
-            if max_items != 0 and total >= max_items:
+            if args.max_items != 0 and total >= args.max_items:
                 print('Reached --max-items, stopping')
                 more = None
                 break
@@ -65,6 +79,7 @@ def subtitle_all_videos(max_items):
         more = response['more']
 
     print(f'Launched {launched}/{total}, {has_subs} media already had some subs, {cannot_launch} cannot be launched')
+    print(f'Set {validated} subs as visible, currently there are {unvalidated_subs} invisible subs')
 
 
 if __name__ == '__main__':
@@ -87,8 +102,14 @@ if __name__ == '__main__':
         type=int
     )
 
+    parser.add_argument(
+        '--validate-subs',
+        action='store_true',
+        help='If unvalidated subs are found, validate them'
+    )
+
     args = parser.parse_args()
     global msc
     msc = MediaServerClient(args.conf)
     msc.check_server()
-    subtitle_all_videos(args.max_items)
+    subtitle_all_videos(args)
