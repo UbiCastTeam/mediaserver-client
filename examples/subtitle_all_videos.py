@@ -41,10 +41,11 @@ def subtitle_all_videos(args):
                 params=dict(object_id=oid),
             )['subtitles']
             if not subs:
+                print(f'Launching generation on {oid} with language {args.language}')
                 r = do_request(
                     'subtitles/generate/',
                     method='post',
-                    data=dict(object_id=oid),
+                    data=dict(object_id=oid, lang=args.language),
                     ignored_status_codes=[400],  # happens if no usable resources are available
                 )
                 if not r.get('error'):
@@ -106,6 +107,27 @@ if __name__ == '__main__':
         '--validate-subs',
         action='store_true',
         help='If unvalidated subs are found, validate them'
+    )
+
+    languages = [
+        'de-DE',
+        'en-GB',
+        'en-US',
+        'es-ES',
+        'fr-FR',
+        'it-IT',
+        'ja-JP',
+        'nl-NL',
+        'pt-PT',
+        'ru-RU',
+        'ar-AR',
+        'zh-CN',
+    ]
+
+    parser.add_argument(
+        '--language',
+        choices=languages,
+        required=True,
     )
 
     args = parser.parse_args()
