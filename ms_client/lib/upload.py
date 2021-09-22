@@ -13,7 +13,7 @@ import time
 logger = logging.getLogger('ms_client.lib.upload')
 
 
-def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True, timeout=3600, max_retry=10):
+def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True, timeout=120, max_retry=10):
     url_prefix = 'medias/resource/' if client.get_server_version() < (8, 2) else ''
     chunk_size = client.conf['UPLOAD_CHUNK_SIZE']
     total_size = os.path.getsize(file_path)
