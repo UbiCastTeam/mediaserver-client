@@ -142,7 +142,7 @@ class MediaServerClient():
             # ignored status codes do not trigger retries nor raise exceptions
             if ignored_status_codes and status_code in ignored_status_codes:
                 logger.info('Not raising exception for ignored status code %s on url %s ignored: %s' % (status_code, url, response))
-                return response
+                return None
             else:
                 raise MediaServerRequestError(
                     'HTTP %s error on %s: %s' % (status_code, url, error_message),

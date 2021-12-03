@@ -134,7 +134,7 @@ def _restore_file(msc, path, top_channel_path):
         if old_version:
             print('The server version is too old, unable to check media existence.')
         else:
-            response = msc.api('medias/get/', params=dict(parents=channel_path, title=metadata['title']), ignore_404=True)
+            response = msc.api('medias/get/', params=dict(parents=channel_path, title=metadata['title']), ignored_status_codes=[404])
             if response:
                 oid = response['info']['oid']
                 url = msc.conf['SERVER_URL'] + '/permalink/' + oid + '/'
