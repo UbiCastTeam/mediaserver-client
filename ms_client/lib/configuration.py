@@ -9,6 +9,7 @@ import re
 import json
 import logging
 import subprocess
+from pathlib import PosixPath
 from ..conf import BASE_CONF
 
 logger = logging.getLogger('ms_client.lib.configuration')
@@ -21,6 +22,10 @@ def load_conf(default_conf=None, local_conf=None):
     for index, conf_override in enumerate((default_conf, local_conf)):
         if not conf_override:
             continue
+
+        if isinstance(conf_override, PosixPath):
+            conf_override = str(conf_override)
+
         if isinstance(conf_override, dict):
             for key, val in conf_override.items():
                 if not key.startswith('_'):
@@ -48,7 +53,7 @@ def load_conf(default_conf=None, local_conf=None):
                         raise ValueError('The configuration in "%s" is not a dict.' % conf_override)
                     conf.update(conf_mod)
             else:
-                logger.debug('Config file does not exists, using default config.')
+                logger.debug(f'Config file {conf_override} does not exist, using default config.')
         else:
             raise ValueError('Unsupported type for configuration.')
     if conf['SERVER_URL'].endswith('/'):
