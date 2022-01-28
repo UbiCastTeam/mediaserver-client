@@ -178,14 +178,13 @@ class MediaServerClient():
         max_retry = kwargs.pop('max_retry', self.conf['MAX_RETRY'])
         if max_retry:
             retry_count = 1
-            ignored_status_codes = kwargs.pop('ignored_status_codes', self.conf['RETRY_EXCEPT'])
             while True:
                 try:
-                    result = self.request(*args, **kwargs, ignored_status_codes=ignored_status_codes)
+                    result = self.request(*args, **kwargs)
                     break
                 except Exception as e:
                     # retry after errors like HTTP 400 errors "Offsets do not match", timeout or RemoteDisconnected errors
-                    if retry_count >= max_retry:
+                    if retry_count >= max_retry or getattr(e, 'status_code', None) not in self.conf['RETRY_EXCEPT']:
                         raise
                     else:
                         # wait longer after every attempt
