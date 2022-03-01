@@ -18,7 +18,7 @@ def process_channel(msc, qualities_to_delete, channel_info, enable_delete=False)
 
     # Check sub channels
     for entry in channel_items.get('channels', []):
-        process_channel(msc, entry, enable_delete=enable_delete)
+        process_channel(msc, qualities_to_delete, entry, enable_delete=enable_delete)
 
     print('// Checking videos in channel %s "%s".' % (channel_info['oid'], channel_info['title']))
     # Get video informations
