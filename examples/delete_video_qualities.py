@@ -134,6 +134,8 @@ if __name__ == '__main__':
 
     msc = MediaServerClient(args.configuration)
     msc.check_server()
+    # Increase default timeout because deletions can be very disk intensive and slow the server
+    msc.conf['TIMEOUT'] = max(60, msc.conf['TIMEOUT'])
 
     rc = check_ressources(msc, args.qualities, args.channel_oid, args.enable_delete)
     sys.exit(rc)

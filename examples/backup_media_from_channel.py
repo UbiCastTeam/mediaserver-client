@@ -288,7 +288,8 @@ if __name__ == '__main__':
 
     msc = MediaServerClient(args.configuration)
     msc.check_server()
-    msc.conf['TIMEOUT'] = 60  # Increase timeout because backups can be very disk intensive and slow the server
+    # Increase default timeout because backups can be very disk intensive and slow the server
+    msc.conf['TIMEOUT'] = max(60, msc.conf['TIMEOUT'])
 
     rc = backup_media_from_channel(msc, args.channel_oid, args.dir_path)
     sys.exit(rc)
