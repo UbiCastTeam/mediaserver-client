@@ -18,6 +18,12 @@ def remove_ressources(msc, video_oid, video_title, qualities_to_delete, enable_d
     # Get resources from video media
     resources = msc.api('medias/resources-list/', params=dict(oid=video_oid))['resources']
 
+    # Filter resources
+    resources = [res for res in resources if res['format'] not in ('embed', 'youtube')]
+    if not resources:
+        print('The media has no resources.')
+        return
+
     # Get reference format depending on media qualities
     ref_format = 'mp3'
     for res in resources:
