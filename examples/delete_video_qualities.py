@@ -23,6 +23,9 @@ def remove_ressources(msc, video_oid, video_title, qualities_to_delete, enable_d
     if not resources:
         print('The media has no resources.')
         return
+    if len(resources) == 1:
+        print('The media has only one resource, nothing to delete.')
+        return
 
     # Get reference format depending on media qualities
     ref_format = 'mp3'
@@ -31,15 +34,17 @@ def remove_ressources(msc, video_oid, video_title, qualities_to_delete, enable_d
             ref_format = 'mp4'
             break
 
-    # Sort by decreasing quality and is mp4
-    resources.sort(key=lambda a: (-a['height'], a['format'] != ref_format))
+    # Sort by format and decreasing quality
+    resources.sort(key=lambda a: (a['format'] != ref_format, a['format'] == 'm3u8', -a['height'], -a['file_size']))
 
-    # Remove mp4 with highest resolution from resource resolutions to delete
-    if resources[0]['format'] == ref_format:
-        ref_res = resources.pop(0)
-        print('Reference file is: %s' % ref_res['path'])
+    # Always keep the reference or the best resource but never a m3u8
+    ref_res = resources.pop(0)
+    print('Reference file is: %s' % ref_res['path'])
+    if ref_res['path'].endswith('.m3u8'):
+        print('Warning: The reference is a m3u8 file, media skipped.')
+        return
 
-    res_count = len(resources)
+    del_count = 0
     for resources_item in resources:
         # Skip original and cleaned resources
         if '_clean' in resources_item['path'] or '_original' in resources_item['path']:
@@ -48,19 +53,15 @@ def remove_ressources(msc, video_oid, video_title, qualities_to_delete, enable_d
             if enable_delete:
                 try:
                     msc.api('medias/resources-delete/', method='post', data=dict(oid=video_oid, names=resources_item['path']))
-                    res_count -= 1
+                    del_count += 1
                 except Exception as e:
                     print('Failed to delete resource "%s": %s' % (resources_item['path'], e))
                 else:
                     print('Resource "%s" from media %s has been deleted successully.' % (resources_item['path'], video_title))
             else:
                 print('[Dry Run] Resource "%s" from media %s would be deleted.' % (resources_item['path'], video_title))
-                res_count -= 1
-
-            # Do not delete last resource
-            if res_count == 1:
-                break
-    if res_count == len(resources):
+                del_count += 1
+    if not del_count:
         print('Nothing to delete in this media.')
 
 
