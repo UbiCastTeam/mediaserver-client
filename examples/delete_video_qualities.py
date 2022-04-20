@@ -15,6 +15,9 @@ import sys
 def remove_ressources(msc, video_oid, video_title, qualities_to_delete, enable_delete=False):
     print('-- Media %s "%s"' % (video_oid, video_title))
 
+    # Update resources from video media
+    resources = msc.api('medias/resources-check/', method='post', data=dict(oid=video_oid))
+
     # Get resources from video media
     resources = msc.api('medias/resources-list/', params=dict(oid=video_oid))['resources']
 
