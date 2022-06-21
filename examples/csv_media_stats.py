@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+import argparse
+import logging
+import csv
+
+from datetime import datetime
+
+
+def setup_logging(verbose=False):
+    logging.addLevelName(logging.ERROR, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+    logging.addLevelName(logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+    level = getattr(logging, 'DEBUG' if verbose else 'INFO')
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)-8s %(message)s",
+    )
+
+
+logger = logging.getLogger('csv-media-stats')
+
+
+class Stats:
+    def __init__(self, options):
+        self.options = options
+        self.parse_options()
+        self.skipped = 0
+        self.read_csv()
+        self.display_stats()
+
+    def parse_options(self):
+        for key in ['start_date', 'end_date']:
+            date = self.options.get(key)
+            if date:
+                self.options[key] = datetime.strptime(date, '%Y-%m-%d')
+
+    def read_csv(self):
+        self.media_list = list()
+        with open(self.options['input']) as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for row in reader:
+                try:
+                    media = self.filter_by_date(row)
+                    if media:
+                        self.media_list.append(media)
+                except Exception as e:
+                    logger.warning(f'Failed to parse row {row}: {e}')
+        logging.info(f'Found {len(self.media_list)} media, skipped {self.skipped}')
+
+    def filter_by_date(self, row):
+        creation = row['creation'] = datetime.strptime(row['creation'], '%Y-%m-%d %H:%M:%S')
+        if self.options['start_date'] and creation < self.options['start_date']:
+            logging.debug(f'Skipping {row} because it was created before the start date')
+            self.skipped += 1
+            return
+        if self.options['end_date'] and creation > self.options['end_date']:
+            self.skipped += 1
+            logging.debug(f'Skipping {row} because it was created after the end date')
+            return
+
+        return row
+
+    def parse_duration(self, dur):
+        #'1 h 51 m 21 s'
+        fields = dur.split(' ')
+        hours_index = minutes_index = seconds_index = None
+
+        if len(fields) == 6:
+            hours_index = 0
+            minutes_index = 2
+            seconds_index = 4
+        elif len(fields) == 4:
+            minutes_index = 0
+            seconds_index = 2
+        elif len(fields) == 2:
+            seconds_index = 0
+
+        hours = int(fields[hours_index]) if hours_index is not None else 0
+        minutes = int(fields[minutes_index]) if minutes_index is not None else 0
+        seconds = int(fields[seconds_index]) if seconds_index is not None else 0
+
+        total_seconds = hours * 3600 + minutes * 60 + seconds
+        return total_seconds
+
+    def display_stats(self):
+        upload_types_count = {
+            'hardware': 0,
+            'webstudio': 0,
+            'upload': 0,
+            'videoconferencing': 0,
+        }
+
+        upload_types_duration = dict(upload_types_count)
+
+        upload_types_size = dict(upload_types_count)
+
+        media_type = {
+            'original': 0,
+            'trimming': 0,
+        }
+
+        hardware_count = {}
+        hardware_duration = {}
+
+        for media in self.media_list:
+            origin = media['origin']
+            try:
+                if 'trimming-' in origin:
+                    media_type['trimming'] += 1
+                    origin = origin.split(' trimming')[0]
+                else:
+                    media_type['original'] += 1
+
+                duration_seconds = self.parse_duration(media['duration'])
+                size_bytes = int(media['storage_used'])
+
+                if origin.startswith('miris-box-') or origin.startswith('easycast-'):
+                    mtype = 'hardware'
+                    serial, version = origin.split('_')
+
+                    hardware_count.setdefault(serial, 0)
+                    hardware_count[serial] += 1
+
+                    hardware_duration.setdefault(serial, 0)
+                    hardware_duration[serial] += duration_seconds
+                elif origin == 'Manual (form: AddMediaWithFileForm)':
+                    mtype = 'upload'
+                elif origin.startswith('webstudio_'):
+                    #webstudio_linux_chromium_102
+                    mtype = 'webstudio'
+                    #ws, os, browser, browser_ver = origin.split('_')
+                elif origin.startswith('zoom-') or origin.startswith('msteams-'):
+                    mtype = 'videoconferencing'
+                else:
+                    logging.warning(f'Unsupported origin "{origin}" for {media}')
+
+                upload_types_count[mtype] += 1
+                upload_types_duration[mtype] += duration_seconds
+                upload_types_size[mtype] += size_bytes
+
+            except Exception as e:
+                logging.warning(f'Failed to analyze origin for {media}: {e}')
+        print('Count by type: ', upload_types_count)
+        print('Duration by type (s): ', upload_types_duration)
+        print('Size by type (bytes): ', upload_types_size)
+        print(media_type)
+        print(hardware_count)
+        print(hardware_duration)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="set verbosity to DEBUG",
+        action="store_true"
+    )
+
+    parser.add_argument(
+        '--input',
+        type=str,
+        required=True,
+        help='Path to CSV file'
+    )
+
+    parser.add_argument(
+        '--start-date',
+        type=str,
+        help='Only keep media created after this date, e.g. "2022-01-31"'
+    )
+
+    parser.add_argument(
+        '--end-date',
+        type=str,
+        help='Only keep media created before this date, e.g. "2022-01-31"'
+    )
+
+    args = parser.parse_args()
+
+    setup_logging(args.verbose)
+
+    stats = Stats(vars(args))
