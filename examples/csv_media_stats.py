@@ -132,8 +132,10 @@ class Stats:
         upload_types_count = {
             'hardware': 0,
             'webstudio': 0,
+            'obs': 0,
             'upload': 0,
             'videoconferencing': 0,
+            'mediaimport': 0,
         }
 
         upload_types_duration = dict(upload_types_count)
@@ -181,6 +183,10 @@ class Stats:
                     #ws, os, browser, browser_ver = origin.split('_')
                 elif origin.startswith('zoom-') or origin.startswith('msteams-'):
                     mtype = 'videoconferencing'
+                elif origin == 'nudgis-obs-plugin':
+                    mtype = 'obs'
+                elif origin.startswith('mediaimport-'):
+                    mtype = 'mediaimport'
                 else:
                     logging.warning(f'Unsupported origin "{origin}" for {media}')
 
