@@ -65,9 +65,10 @@ if __name__ == '__main__':
     msc = MediaServerClient(local_conf)
     msc.check_server()
 
-    csv_path = 'media.csv'
+    csv_path = f'media-{msc.conf["SERVER_URL"].split("://")[1]}.csv'
     if os.path.isfile(csv_path):
         print(f'File {csv_path} already exists, exiting with error')
         sys.exit(1)
 
     generate_csv(msc, csv_path)
+    print(f'Finished writing {csv_path}')
