@@ -23,11 +23,11 @@ def get_percent(index, total):
 
 def get_percent_string(val, total, do_format=None):
     if do_format == 'size':
-        return f'[{format_bytes(val)} / {format_bytes(total)} ({get_percent(val, total):.1f}%)]'
+        return f'{format_bytes(val)} / {format_bytes(total)} ({get_percent(val, total):.1f}%)'
     elif do_format == 'time':
-        return f'[{format_seconds(val)} / {format_seconds(total)} ({get_percent(val, total):.1f}%)]'
+        return f'{format_seconds(val)} / {format_seconds(total)} ({get_percent(val, total):.1f}%)'
     else:
-        return f'[{val} / {total} ({get_percent(val, total):.1f}%)]'
+        return f'{val} / {total} ({get_percent(val, total):.1f}%)'
 
 
 def format_seconds(seconds):
