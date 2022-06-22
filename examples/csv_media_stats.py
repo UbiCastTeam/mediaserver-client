@@ -16,6 +16,53 @@ def setup_logging(verbose=False):
     )
 
 
+def get_percent(index, total):
+    percent = 100 * (index) / total
+    return percent
+
+
+def get_percent_string(val, total, do_format=None):
+    if do_format == 'size':
+        return f'[{format_bytes(val)} / {format_bytes(total)} ({get_percent(val, total):.1f}%)]'
+    elif do_format == 'time':
+        return f'[{format_seconds(val)} / {format_seconds(total)} ({get_percent(val, total):.1f}%)]'
+    else:
+        return f'[{val} / {total} ({get_percent(val, total):.1f}%)]'
+
+
+def format_seconds(seconds):
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    timecode = "%d:%02d:%02d" % (h, m, s)
+    return timecode
+
+
+def format_bytes(size):
+    # 2**10 = 1024
+    power = 2**10
+    n = 0
+    power_labels = {0: '', 1: 'kilo', 2: 'mega', 3: 'giga', 4: 'tera'}
+    while size > power:
+        size /= power
+        n += 1
+    return f'{round(size, 1)} {power_labels[n]}bytes'
+
+
+def print_dict_stats(d, title, threshold_percent=0, do_format=None,):
+    d = dict(sorted(d.items(), key=lambda item: item[1], reverse=True))
+    print(f'\n**** {title}:')
+    total = sum(d.values())
+    skipped = 0
+    for key, val in d.items():
+        percent = get_percent(val, total)
+        if threshold_percent and percent <= threshold_percent:
+            skipped += val
+        else:
+            print(f'{key}: {get_percent_string(val, total, do_format)}')
+    if skipped:
+        print(f'Various (below {threshold_percent}%: {get_percent_string(skipped, total)}')
+
+
 logger = logging.getLogger('csv-media-stats')
 
 
@@ -139,12 +186,12 @@ class Stats:
 
             except Exception as e:
                 logging.warning(f'Failed to analyze origin for {media}: {e}')
-        print('Count by type: ', upload_types_count)
-        print('Duration by type (s): ', upload_types_duration)
-        print('Size by type (bytes): ', upload_types_size)
-        print(media_type)
-        print(hardware_count)
-        print(hardware_duration)
+        print_dict_stats(upload_types_count, 'Count by type')
+        print_dict_stats(upload_types_duration, 'Duration by type', do_format='time')
+        print_dict_stats(upload_types_size, 'Size by type', do_format='size')
+        print_dict_stats(media_type, 'Media type')
+        print_dict_stats(hardware_count, 'Count by system')
+        print_dict_stats(hardware_duration, 'Duration by system', do_format='time')
 
 
 if __name__ == '__main__':
