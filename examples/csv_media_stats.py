@@ -148,17 +148,21 @@ class Stats:
         hardware_count = {}
         hardware_duration = {}
 
+        speakers_count = {}
+        speakers_duration = {}
+
         for media in self.media_list:
             origin = media['origin']
+            speaker_email = media['speaker_email']
+            duration_seconds = self.parse_duration(media['duration'])
+            size_bytes = int(media['storage_used'])
+
             try:
                 if 'trimming-' in origin:
                     media_type['trimming'] += 1
                     origin = origin.split(' trimming')[0]
                 else:
                     media_type['original'] += 1
-
-                duration_seconds = self.parse_duration(media['duration'])
-                size_bytes = int(media['storage_used'])
 
                 if origin.startswith('miris-box-') or origin.startswith('easycast-'):
                     mtype = 'hardware'
@@ -186,12 +190,21 @@ class Stats:
 
             except Exception as e:
                 logging.warning(f'Failed to analyze origin for {media}: {e}')
+
+            if speaker_email:
+                speakers_count.setdefault(speaker_email, 0)
+                speakers_count[speaker_email] += 1
+                speakers_duration.setdefault(speaker_email, 0)
+                speakers_duration[speaker_email] += duration_seconds
+
         print_dict_stats(upload_types_count, 'Count by type')
         print_dict_stats(upload_types_duration, 'Duration by type', do_format='time')
         print_dict_stats(upload_types_size, 'Size by type', do_format='size')
         print_dict_stats(media_type, 'Media type')
         print_dict_stats(hardware_count, 'Count by system')
         print_dict_stats(hardware_duration, 'Duration by system', do_format='time')
+        print_dict_stats(speakers_count, 'Count by speaker')
+        print_dict_stats(speakers_duration, 'Duration by speaker', do_format='time')
 
 
 if __name__ == '__main__':
