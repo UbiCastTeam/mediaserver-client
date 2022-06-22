@@ -3,11 +3,9 @@
 '''
 Script to generate a CSV file for metadata from all media in the database
 '''
+import csv
 import os
 import sys
-
-
-SEP = '\t'
 
 
 def generate_csv(msc, csv_path):
@@ -16,7 +14,13 @@ def generate_csv(msc, csv_path):
         'title',
         'creation',
         'origin',
+        'language',
+        'comments'
         'views',
+        'views_last_month',
+        'speaker_email',
+        'location',
+        'tree',
         'duration',
         'storage_used',
     ]
@@ -25,9 +29,9 @@ def generate_csv(msc, csv_path):
         more = True
         start = ''
         index = 0
-        header = '#' + SEP.join(fields) + '\n'
 
-        f.write(header)
+        writer = csv.DictWriter(f, fieldnames=fields, delimiter='\t')
+        writer.writeheader()
 
         while more:
             print('//// Making request on latest (start=%s)' % start)
@@ -37,14 +41,18 @@ def generate_csv(msc, csv_path):
                 print('// Media %s' % index)
                 params = {
                     'oid': item['oid'],
-                    'full': 'yes',
+                    'path': 'yes',
                 }
 
                 data = msc.api('medias/get/', params=params)['info']
-                cols = list()
+                row = {}
+                # only copy fields we need
                 for field in fields:
-                    cols.append(str(data[field]))
-                f.write(SEP.join(cols) + '\n')
+                    if data.get(field):
+                        row[field] = data[field]
+                path = '/'.join([item['title'] for item in data['path']])
+                row['tree'] = path
+                writer.writerow(row)
             start = response['max_date']
             more = response['more']
 
