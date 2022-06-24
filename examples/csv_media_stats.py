@@ -134,8 +134,12 @@ class Stats:
             'webstudio': 0,
             'obs': 0,
             'upload': 0,
+            'embed': 0,
+            'external-resource': 0,
+            'youtube': 0,
             'videoconferencing': 0,
             'mediaimport': 0,
+            'mediasite-migration': 0,
         }
 
         upload_types_duration = dict(upload_types_count)
@@ -177,6 +181,12 @@ class Stats:
                     hardware_duration[serial] += duration_seconds
                 elif origin == 'Manual (form: AddMediaWithFileForm)':
                     mtype = 'upload'
+                elif origin == 'Manual (form: AddVODWithEmbedForm)':
+                    mtype = 'embed'
+                elif origin == 'Manual (form: AddVODWithResourcesForm)':
+                    mtype = 'external-resource'
+                elif origin == 'Manual (form: AddVODWithYouTubeForm)':
+                    mtype = 'youtube'
                 elif origin.startswith('webstudio_'):
                     #webstudio_linux_chromium_102
                     mtype = 'webstudio'
@@ -187,6 +197,8 @@ class Stats:
                     mtype = 'obs'
                 elif origin.startswith('mediaimport-'):
                     mtype = 'mediaimport'
+                elif origin in ['mediatransfer', 'mediasite-migration-client']:
+                    mtype = 'mediasite-migration'
                 else:
                     logging.warning(f'Unsupported origin "{origin}" for {media}')
 
