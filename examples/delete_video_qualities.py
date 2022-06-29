@@ -112,7 +112,7 @@ def check_ressources(msc, qualities_to_delete, channel_oid, csv_file, enable_del
             return 1
         process_csv_file(msc, qualities_to_delete, csv_file, enable_delete=enable_delete)
         return 0
-    else:
+    elif channel_oid:
         # Check if channel oid exists
         try:
             channel_parent = msc.api('channels/get/', method='get', params=dict(oid=channel_oid))
@@ -122,6 +122,12 @@ def check_ressources(msc, qualities_to_delete, channel_oid, csv_file, enable_del
             return 1
         print('Parent Channel is "%s".' % channel_parent['info']['title'])
         process_channel(msc, qualities_to_delete, channel_parent['info'], enable_delete=enable_delete)
+        return 0
+    else:
+        # Process all channels
+        info = {'oid': '', 'title': 'root'}
+        print('Parent Channel is "%s".' % info['title'])
+        process_channel(msc, qualities_to_delete, info, enable_delete=enable_delete)
         return 0
 
 
@@ -165,13 +171,13 @@ if __name__ == '__main__':
     group.add_argument(
         '--channel',
         dest='channel_oid',
-        help='Channel oid to check.',
+        help='Channel oid to check. If no channel and no CSV is given, all channels will be checked.',
         type=str)
 
     group.add_argument(
         '--csv',
         dest='csv_file',
-        help='CSV file with oid videos',
+        help='CSV file with a list of videos oids. If no channel and no CSV is given, all channels will be checked.',
         type=str)
 
     args = parser.parse_args()
