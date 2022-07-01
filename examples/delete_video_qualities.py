@@ -22,7 +22,10 @@ def remove_ressources(msc, video_oid, video_title, qualities_to_delete, enable_d
     resources = msc.api('medias/resources-list/', params=dict(oid=video_oid))['resources']
 
     # Filter resources
-    resources = [res for res in resources if res['format'] not in ('embed', 'youtube')]
+    resources = [
+        res
+        for res in resources
+        if res['format'] not in ('embed', 'youtube') and (' local ' in res['manager'] or ' object ' in res['manager'])]
     if not resources:
         print('The media has no resources.')
         return
@@ -38,7 +41,13 @@ def remove_ressources(msc, video_oid, video_title, qualities_to_delete, enable_d
             break
 
     # Sort by format and decreasing quality
-    resources.sort(key=lambda a: (a['format'] != ref_format, a['format'] == 'm3u8', -a['height'], -a['file_size']))
+    resources.sort(key=lambda a: (
+        a['format'] != ref_format,
+        a['format'] == 'm3u8',
+        '_clean.' in a['path'] or '_original.' in a['path'],
+        -a['height'],
+        -a['file_size']
+    ))
 
     # Always keep the reference or the best resource but never a m3u8
     ref_res = resources.pop(0)
@@ -49,9 +58,6 @@ def remove_ressources(msc, video_oid, video_title, qualities_to_delete, enable_d
 
     del_count = 0
     for resources_item in resources:
-        # Skip original and cleaned resources
-        if '_clean' in resources_item['path'] or '_original' in resources_item['path']:
-            continue
         if qualities_to_delete == '*' or resources_item['height'] in qualities_to_delete:
             if enable_delete:
                 try:
