@@ -172,7 +172,7 @@ if __name__ == '__main__':
         action='store_true',
         default=False,
         dest='enable_delete',
-        help='Delete media in MediaServer.')
+        help='Enable files deletion. If not enabled, the script will be run in dry run mode.')
 
     group.add_argument(
         '--channel',
