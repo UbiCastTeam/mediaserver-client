@@ -68,26 +68,29 @@ if __name__ == '__main__':
         csv_data = f.read().strip()
         count = 0
         freed = 0
-        for line in csv_data.split('\n'):
-            if not line.startswith('#'):
-                oid = line.split(args.csv_separator)[0]
-                if oid:
-                    params = {'oid': oid, 'full': 'yes'}
-                    try:
-                        print(f'{oid}')
-                        info = msc.api('medias/get/', params=params)['info']
-                        freed += info['storage_used']
-                        if args.apply:
-                            data = {
-                                'oid': oid,
-                                'delete_metadata': 'yes',
-                                'delete_resources': 'yes',
-                            }
-                            print(f'Deleting {oid}')
-                            msc.api('medias/delete/', method='post', data=data)
-                        count += 1
-                    except Exception as e:
-                        print(f'Error on {oid}: {e}')
+        lines = [line for line in csv_data.split('\n') if (line and not line.startswith('#'))]
+        total_lines = len(lines)
+        print(f'About to delete {total_lines} media')
+
+        for index, line in enumerate(lines):
+            oid = line.split(args.csv_separator)[0]
+            if oid:
+                params = {'oid': oid, 'full': 'yes'}
+                try:
+                    print(f'[{index+1}/{total_lines}] About to delete {oid}')
+                    info = msc.api('medias/get/', params=params)['info']
+                    freed += info['storage_used']
+                    if args.apply:
+                        data = {
+                            'oid': oid,
+                            'delete_metadata': 'yes',
+                            'delete_resources': 'yes',
+                        }
+                        print(f'Deleting {oid}')
+                        msc.api('medias/delete/', method='post', data=data)
+                    count += 1
+                except Exception as e:
+                    print(f'Error on {oid}: {e}')
         freed_gb = round(freed / GB, 1)
         if not args.apply:
             print(f'Deleting {count} media would have freed {freed_gb} GB ({freed} bytes)')
