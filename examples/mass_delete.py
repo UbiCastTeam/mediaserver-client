@@ -71,6 +71,10 @@ if __name__ == '__main__':
         lines = [line for line in csv_data.split('\n') if (line and not line.startswith('#'))]
         total_lines = len(lines)
         print(f'About to delete {total_lines} media')
+        # there is a limit to how many subprocesses can be launched
+        if total_lines > 30000:
+            print('We recommend against deleting that many files at once')
+            sys.exit(1)
 
         for index, line in enumerate(lines):
             oid = line.split(args.csv_separator)[0]
