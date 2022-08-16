@@ -15,7 +15,7 @@ def generate_csv(msc, csv_path):
         'creation',
         'origin',
         'language',
-        'comments'
+        'comments',
         'views',
         'views_last_month',
         'speaker_email',
@@ -34,16 +34,16 @@ def generate_csv(msc, csv_path):
         writer.writeheader()
 
         while more:
-            print('//// Making request on latest (start=%s)' % start)
+            print(f'//// Making request on latest (start={start})')
             response = msc.api('latest/', params=dict(start=start, content='v', count=100))
             for item in response['items']:
                 index += 1
-                print('// Media %s' % index)
+                print(f'// Media {index}: {item["oid"]}')
+
                 params = {
                     'oid': item['oid'],
                     'path': 'yes',
                 }
-
                 data = msc.api('medias/get/', params=params)['info']
                 row = {}
                 # only copy fields we need
