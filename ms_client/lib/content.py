@@ -6,6 +6,7 @@ This module is not intended to be used directly, only the client class should be
 '''
 import logging
 import os
+import zipfile
 
 logger = logging.getLogger('ms_client.lib.content')
 
@@ -46,6 +47,11 @@ def download_metadata_zip(client, media_oid, path, include_annotations=None, inc
     with open(path, 'wb') as fo:
         for chunk in req.iter_content(10000000):  # 10 MB chunks
             fo.write(chunk)
+
+    # check that the file is really a zip file
+    zip_file = zipfile.ZipFile(path, 'r')
+    if zip_file.testzip():
+        raise Exception('Invalid zip file')
     return path
 
 
