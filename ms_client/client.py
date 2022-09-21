@@ -73,8 +73,14 @@ class MediaServerClient():
     def get_server_version(self):
         if not hasattr(self, '_server_version'):
             try:
-                response = self.api('/')
-                version_str = response.get('mediaserver') or '6.5.4'  # "mediaserver" key was added in version 6.6.0
+                url = self.get_full_url('/')
+
+                # api-key header was added in version 11.0.0, so we must authenticate using the previously
+                # available api_key query string first to determine the version
+                response = self.request(url, api_key_in_header=False)
+
+                # "mediaserver" key was added in version 6.6.0
+                version_str = response.get('mediaserver') or '6.5.4'
                 self._server_version = tuple([int(i) for i in version_str.split('.')])
             except Exception as e:
                 raise MediaServerRequestError(
@@ -86,7 +92,7 @@ class MediaServerClient():
                 logger.debug('MediaServer version is: %s', self._server_version)
         return self._server_version
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, stream=False, ignored_status_codes=None, ignored_error_strings=None):
+    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, stream=False, ignored_status_codes=None, ignored_error_strings=None, api_key_in_header=None):
         if ignored_status_codes is None:
             ignored_status_codes = list()
 
@@ -103,9 +109,6 @@ class MediaServerClient():
 
         if method in ['get', 'head']:
             params = params or dict()
-            if self.conf.get('API_KEY'):
-                params['api_key'] = self.conf['API_KEY']
-
             if method == 'get':
                 req_function = self.session.get if self.session is not None else requests.get
             elif method == 'head':
@@ -113,8 +116,20 @@ class MediaServerClient():
         else:
             req_function = self.session.post if self.session is not None else requests.post
             data = data or dict()
-            if self.conf.get('API_KEY'):
-                data['api_key'] = self.conf['API_KEY']
+
+        api_key = self.conf.get('API_KEY')
+        if api_key:
+            # the api-key header was introduced in version 11.0.0
+            # prefer this over the api_key query string by default to avoid leaking
+            # the key in access logs and to preserve authentication when following
+            # 302 redirections
+            if api_key_in_header is False or self.get_server_version()[0] < 11:
+                if method in ['get', 'head']:
+                    params['api_key'] = api_key
+                else:
+                    data['api_key'] = api_key
+            else:
+                headers['api-key'] = api_key
 
         req = req_function(
             url=url,
@@ -170,11 +185,14 @@ class MediaServerClient():
             response = req.text.strip()
         return response
 
+    def get_full_url(self, suffix):
+        return self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
+
     def api(self, suffix, *args, **kwargs):
         self.check_conf()
 
         begin = time.time()
-        kwargs['url'] = self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
+        kwargs['url'] = self.get_full_url(suffix)
         max_retry = kwargs.pop('max_retry', self.conf['MAX_RETRY'])
         if max_retry:
             retry_count = 1
