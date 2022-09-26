@@ -77,7 +77,7 @@ class MediaServerClient():
 
                 # api-key header was added in version 11.0.0, so we must authenticate using the previously
                 # available api_key query string first to determine the version
-                response = self.request(url, api_key_in_header=False)
+                response = self.request(url, authenticate=False)
 
                 # "mediaserver" key was added in version 6.6.0
                 version_str = response.get('mediaserver') or '6.5.4'
@@ -92,7 +92,7 @@ class MediaServerClient():
                 logger.debug('MediaServer version is: %s', self._server_version)
         return self._server_version
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, stream=False, ignored_status_codes=None, ignored_error_strings=None, api_key_in_header=None):
+    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, stream=False, ignored_status_codes=None, ignored_error_strings=None, authenticate=True):
         if ignored_status_codes is None:
             ignored_status_codes = list()
 
@@ -118,12 +118,12 @@ class MediaServerClient():
             data = data or dict()
 
         api_key = self.conf.get('API_KEY')
-        if api_key:
+        if api_key and authenticate:
             # the api-key header was introduced in version 11.0.0
             # prefer this over the api_key query string by default to avoid leaking
             # the key in access logs and to preserve authentication when following
             # 302 redirections
-            if api_key_in_header is False or self.get_server_version()[0] < 11:
+            if self.get_server_version()[0] < 11:
                 if method in ['get', 'head']:
                     params['api_key'] = api_key
                 else:
