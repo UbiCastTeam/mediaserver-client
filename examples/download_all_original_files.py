@@ -32,7 +32,7 @@ def download_all_original_files(msc, dir_path='videos'):
             resources.sort(key=lambda a: -a['file_size'])
             best_quality = None
             for r in resources:
-                if r['protocol'] == 'http' and r['format'] not in ('m3u8', 'youtube', 'embed'):
+                if r['format'] not in ('m3u8', 'youtube', 'embed'):
                     best_quality = r
                     break
             video_page = msc.conf['SERVER_URL'] + '/permalink/' + item['oid'] + '/'

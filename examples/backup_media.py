@@ -199,7 +199,7 @@ def download_media_best_resource(msc, item, media_backup_dir, file_prefix, local
         return
     best_quality = None
     for r in resources:
-        if r['protocol'] == 'http' and r['format'] != 'm3u8':
+        if r['format'] != 'm3u8':
             best_quality = r
             break
     if not best_quality:
