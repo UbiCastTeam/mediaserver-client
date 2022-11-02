@@ -1,15 +1,15 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mediaserver-api-client.svg)
 ![PyPI](https://img.shields.io/pypi/v/mediaserver-api-client.svg)
-![Travis (.org) branch](https://img.shields.io/travis/UbiCastTeam/mediaserver-client/master.svg)
 
 # mediaserver-client
 
-A python3 reference implementation of an UbiCast MediaServer API client.
+A python3 reference implementation of an UbiCast Nudgis API client.
+Nudgis was called MediaServer in the past but the internal name of Nudgis is still MediaServer.
 
 
 ## Installation
 
-To install the latest release of the mediaserver-client from PyPI :
+To install the latest release of the client from PyPI :
 
 ```sh
 pip install mediaserver-api-client
