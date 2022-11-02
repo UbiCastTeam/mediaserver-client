@@ -16,15 +16,15 @@ BASE_CONF = {
 
     # Language for API messages
     # Use None to use MediaServer default language
-    # Supported languages are 'en' or 'fr'.
+    # Supported languages are 'en' or 'fr'
     'LANGUAGE': 'en',
 
     # Use a persistent session for requests
     'USE_SESSION': True,
 
     # If failures should be auto-retried N times
-    # disabled by default
-    'MAX_RETRY': None,
+    # Disabled by default
+    'MAX_RETRY': 0,
 
     # List of status codes that should not trigger a retry
     'RETRY_EXCEPT': [403, 404],

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-'''
+"""
 MediaServer client upload library
 This module is not intended to be used directly, only the client class should be used.
-'''
+"""
 import logging
 import os
 import zipfile
 
-logger = logging.getLogger('ms_client.lib.content')
+logger = logging.getLogger(__name__)
 
 
 def add_media(client, title=None, file_path=None, progress_callback=None, progress_data=None, timeout=3600, max_retry=None, **kwargs):
@@ -47,7 +47,7 @@ def download_metadata_zip(client, media_oid, path, include_annotations=None, inc
         for chunk in req.iter_content(10000000):  # 10 MB chunks
             fo.write(chunk)
 
-    # check that the file is really a zip file
+    # Check that the file is really a zip file
     zip_file = zipfile.ZipFile(path, 'r')
     if zip_file.testzip():
         raise Exception('Invalid zip file')

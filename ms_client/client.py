@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-'''
+"""
 MediaServer client class
 
 Copyright 2019, Florent Thiery, Stéphane Diemer
-'''
+"""
+from json import JSONDecodeError
 import logging
 import requests
 import time
@@ -13,21 +14,24 @@ from .lib import content as content_lib
 from .lib import upload as upload_lib
 from .lib import users_csv as users_csv_lib
 
-logger = logging.getLogger('ms_client.client')
+logger = logging.getLogger(__name__)
 
 
 class MediaServerRequestError(Exception):
-    def __init__(self, *args, **kwargs):
-        self.status_code = kwargs.pop('status_code', None)
-        self.error_code = kwargs.pop('error_code', None)
-        super().__init__(*args, **kwargs)
+    def __init__(self, message, status_code=None, error_code=None, response=None):
+        self.status_code = status_code
+        self.error_code = error_code
+        self.response = response
+        logger.error(message)
+        super().__init__(message)
 
 
 class MediaServerClient():
-    '''
+    """
     MediaServer API client class
-    '''
-    DEFAULT_CONF = None  # can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
+    """
+    DEFAULT_CONF = None  # Can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
+    RequestError = MediaServerRequestError  # A reference to the error class to avoid circular imports in the client lib dir
 
     def __init__(self, local_conf=None, setup_logging=True):
         # "local_conf" can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
@@ -59,7 +63,7 @@ class MediaServerClient():
 
     def update_conf(self, key, value):
         self.conf[key] = value
-        # write change in local_conf if it is a path
+        # Write change in local_conf if it is a path
         configuration_lib.update_conf(self.local_conf, key, value)
 
     def check_conf(self):
@@ -75,145 +79,166 @@ class MediaServerClient():
             try:
                 url = self.get_full_url('/')
 
-                # api-key header was added in version 11.0.0, so we must authenticate using the previously
-                # available api_key query string first to determine the version
                 response = self.request(url, authenticate=False)
 
-                # "mediaserver" key was added in version 6.6.0
+                # The "mediaserver" key was added in version 6.6.0
                 version_str = response.get('mediaserver') or '6.5.4'
                 self._server_version = tuple([int(i) for i in version_str.split('.')])
-            except Exception as e:
+            except Exception as err:
                 raise MediaServerRequestError(
-                    'Failed to get MediaServer version: %s' % e,
-                    status_code=getattr(e, 'status_code', None),
-                    error_code=getattr(e, 'error_code', None)
-                )
+                    f'Failed to get MediaServer version: {err}',
+                    status_code=getattr(err, 'status_code', None),
+                    error_code=getattr(err, 'error_code', None)
+                ) from err
             else:
-                logger.debug('MediaServer version is: %s', self._server_version)
+                logger.debug(f'MediaServer version is: {self._server_version}')
         return self._server_version
 
-    def request(self, url, method='get', data=None, params=None, files=None, headers=None, parse_json=True, timeout=None, stream=False, ignored_status_codes=None, ignored_error_strings=None, authenticate=True):
+    def request(self, url, method='get', headers=None, params=None, data=None, files=None, parse_json=True, timeout=None, stream=False, ignored_status_codes=None, authenticate=True):
+        self.check_conf()
+
         if ignored_status_codes is None:
-            ignored_status_codes = list()
+            ignored_status_codes = []
 
-        if ignored_error_strings is None:
-            ignored_error_strings = list()
-
-        if self.session is None and self.conf['USE_SESSION']:
-            self.session = requests.Session()
+        if self.conf['USE_SESSION']:
+            if self.session is None:
+                self.session = requests.Session()
+            req_function = getattr(self.session, method)
+        else:
+            req_function = getattr(requests, method)
 
         if headers is None:
-            headers = dict()
+            headers = {}
         if self.conf.get('LANGUAGE'):
             headers.setdefault('Accept-Language', self.conf['LANGUAGE'])
 
-        if method in ['get', 'head']:
-            params = params or dict()
-            if method == 'get':
-                req_function = self.session.get if self.session is not None else requests.get
-            elif method == 'head':
-                req_function = self.session.head if self.session is not None else requests.head
-        else:
-            req_function = self.session.post if self.session is not None else requests.post
-            data = data or dict()
-
         api_key = self.conf.get('API_KEY')
         if api_key and authenticate:
-            # the api-key header was introduced in version 11.0.0
-            # prefer this over the api_key query string by default to avoid leaking
+            # The api-key header was introduced in version 11.0.0.
+            # Prefer this over the api_key query string by default to avoid leaking
             # the key in access logs and to preserve authentication when following
             # 302 redirections
             if self.get_server_version()[0] < 11:
                 if method in ['get', 'head']:
+                    if params is None:
+                        params = {}
                     params['api_key'] = api_key
                 else:
+                    if data is None:
+                        data = {}
                     data['api_key'] = api_key
             else:
                 headers['api-key'] = api_key
 
-        req = req_function(
-            url=url,
-            headers=headers,
-            params=params,
-            data=data,
-            files=files,
-            stream=stream,
-            timeout=timeout or self.conf['TIMEOUT'],
-            proxies=self.conf['PROXIES'],
-            verify=self.conf['VERIFY_SSL'],
-        )
-        status_code = req.status_code
-        if status_code != 200:
-            error_message = req.text[:300]
+        try:
+            req = req_function(
+                url=url,
+                headers=headers,
+                params=params,
+                data=data,
+                files=files,
+                stream=stream,
+                timeout=timeout or self.conf['TIMEOUT'],
+                proxies=self.conf['PROXIES'],
+                verify=self.conf['VERIFY_SSL'],
+            )
+            status_code = req.status_code
+        except Exception as err:
+            raise MediaServerRequestError(
+                f'Connection error on "{url}": {err}',
+                status_code=0,
+            ) from err
+
+        # Success and cases for which no decoding is required
+        if status_code == 200:
+            if stream or method == 'head':
+                return req
+            if not parse_json:
+                return req.text
+
+        # Get response
+        if parse_json:
+            try:
+                response = req.json()
+            except JSONDecodeError as err:
+                response = {'raw': req.text}
+                if status_code == 200:
+                    raise MediaServerRequestError(
+                        f'API call failed on "{url}": Failed to decode JSON: {err}',
+                        status_code=status_code,
+                        response=response,
+                    ) from err
+        else:
+            response = req.text
+
+        # Failure if code is not 200 or success is False
+        # The success check is for versions < 11.0.0
+        if status_code != 200 or not response.get('success', True):
+            error_message = None
             error_code = None
             if parse_json:
-                try:
-                    response = req.json()
-                    error_message = response.get('error') or response.get('errors') or response.get('message') or error_message
-                    error_code = response.get('code')
-                except Exception:
-                    pass
+                error_message = response.get('error') or response.get('errors') or response.get('message')
+                error_code = response.get('code')
+            if not error_message:
+                error_message = req.text[:200]
 
-            # ignored status codes do not trigger retries nor raise exceptions
-            if ignored_status_codes and status_code in ignored_status_codes:
-                logger.info('Not raising exception for ignored status code %s on url %s ignored: %s' % (status_code, url, response))
+            if status_code == 200:
+                raise MediaServerRequestError(
+                    f'API call failed on "{url}": {error_message}',
+                    status_code=status_code,
+                    error_code=error_code,
+                    response=response,
+                )
+            elif ignored_status_codes and status_code in ignored_status_codes:
+                # Ignored status codes do not trigger retries nor raise exceptions
+                logger.info(f'Not raising exception for ignored status code {status_code} on url {url} ignored: {response}')
                 return None
             else:
                 raise MediaServerRequestError(
-                    'HTTP %s error on %s: %s' % (status_code, url, error_message),
+                    f'HTTP {status_code} error on "{url}": {error_message}',
                     status_code=status_code,
-                    error_code=error_code
+                    error_code=error_code,
+                    response=response,
                 )
-        if stream or method == 'head':
-            response = req
-        elif parse_json:
-            # code is 200
-            response = req.json()
-            if 'success' in response and not response['success']:
-                error_message = response.get('error') or response.get('errors') or response.get('message') or 'No information on error.'
-                error_code = response.get('code')
-                for string in ignored_error_strings:
-                    if string in str(error_message):
-                        logger.info('Ignoring error on url %s : %s' % (url, error_message))
-                        return None
-                raise MediaServerRequestError(
-                    'API call failed: %s' % error_message,
-                    status_code=status_code,
-                    error_code=error_code
-                )
-        else:
-            response = req.text.strip()
+
         return response
 
     def get_full_url(self, suffix):
         return self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
 
-    def api(self, suffix, *args, **kwargs):
-        self.check_conf()
+    def get_max_retry(self, max_retry=None):
+        value = max_retry if max_retry is not None else (self.conf['MAX_RETRY'] or 0)
+        if value < 0:
+            raise ValueError('The "max_retry" argument must be greater than or equal 0.')
+        return value
 
+    def api(self, suffix, *args, **kwargs):
         begin = time.time()
         kwargs['url'] = self.get_full_url(suffix)
-        max_retry = kwargs.pop('max_retry', self.conf['MAX_RETRY'])
-        if max_retry:
-            retry_count = 1
+        max_retry = self.get_max_retry(kwargs.pop('max_retry', None))
+        if not max_retry:
+            result = self.request(*args, **kwargs)
+        else:
+            tried = 0
             while True:
+                tried += 1
                 try:
                     result = self.request(*args, **kwargs)
                     break
-                except Exception as e:
-                    # retry after errors like HTTP 400 errors "Offsets do not match", timeout or RemoteDisconnected errors
-                    if retry_count >= max_retry or getattr(e, 'status_code', None) not in self.conf['RETRY_EXCEPT']:
+                except MediaServerRequestError as err:
+                    # Retry after errors like timeout or RemoteDisconnected errors
+                    if tried > max_retry or getattr(err, 'status_code', None) not in self.conf['RETRY_EXCEPT']:
+                        logger.error(f'Request on "{suffix}" failed, tried {tried} times.')
                         raise
                     else:
-                        # wait longer after every attempt
-                        retry_time_s = 3 * retry_count * retry_count
-                        logger.error('Request on %s failed (tried %s times, max %s), retrying in %ss, error was: %s' % (suffix, retry_count, max_retry, retry_time_s, e))
-                        retry_count += 1
-                        time.sleep(retry_time_s)
-                        # seek to 0 in file objects
+                        # Wait longer after every attempt
+                        delay = 3 * tried * tried
+                        logger.error(f'Request on "{suffix}" failed, tried {tried} times (max {max_retry}), retrying in {delay}s.')
+                        time.sleep(delay)
+                        # Seek to 0 in file objects
                         # (file objects using a value different from 0 as initial position is not supported)
                         if kwargs.get('files'):
-                            # python-requests supports the following files arguments:
+                            # Python-requests supports the following files arguments:
                             # files = {'file': open('report.xls', 'rb')}
                             # files = {'file': tuple}
                             # 2-tuples (filename, fileobj)
@@ -238,9 +263,7 @@ class MediaServerClient():
                                 if fd:
                                     logger.debug('Seeking file descriptor to 0')
                                     fd.seek(0)
-        else:
-            result = self.request(*args, **kwargs)
-        logger.debug('API call duration: %.2f s - %s', time.time() - begin, suffix)
+        logger.debug(f'API call duration: {time.time() - begin:.2f} s - {suffix}.')
         return result
 
     def hls_upload(self, *args, **kwargs):
