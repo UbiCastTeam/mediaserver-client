@@ -141,6 +141,7 @@ class MediaServerClient():
                 timeout=timeout or self.conf['TIMEOUT'],
                 proxies=self.conf['PROXIES'],
                 verify=self.conf['VERIFY_SSL'],
+                allow_redirects=True,
             )
             status_code = req.status_code
         except Exception as err:
