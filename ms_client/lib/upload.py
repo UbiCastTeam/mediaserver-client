@@ -63,15 +63,19 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
                             logger.info(f'Offset issue detected during upload, ignoring error: {err}')
                             break
                         # No need to retry for other 400 errors, the result will be the same
-                        raise
-                    elif tried <= max_retry:
+                        logger.error(f'Chunk upload failed, tried {tried} times (no retry for the status code {err.status_code} in chunk upload).')
+                        raise err
+                    elif err.status_code in client.conf['RETRY_EXCEPT']:
+                        logger.error(f'Chunk upload failed, tried {tried} times (no retry for the status code {err.status_code}).')
+                        raise err
+                    elif tried > max_retry:
+                        logger.error(f'Chunk upload failed, tried {tried} times (reached max retry count).')
+                        raise err
+                    else:
                         # Wait longer after every attempt
                         delay = 3 * tried * tried
                         logger.error(f'Chunk upload failed, tried {tried} times (max {max_retry}), retrying in {delay}s.')
                         time.sleep(delay)
-                    else:
-                        logger.error(f'Chunk upload failed, tried {tried} times.')
-                        raise
 
             # Notify progress callback
             if progress_callback:

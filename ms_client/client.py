@@ -228,9 +228,12 @@ class MediaServerClient():
                     break
                 except MediaServerRequestError as err:
                     # Retry after errors like timeout or RemoteDisconnected errors
-                    if tried > max_retry or getattr(err, 'status_code', None) not in self.conf['RETRY_EXCEPT']:
-                        logger.error(f'Request on "{suffix}" failed, tried {tried} times.')
-                        raise
+                    if err.status_code in self.conf['RETRY_EXCEPT']:
+                        logger.error(f'Request on "{suffix}" failed, tried {tried} times (no retry for the status code {err.status_code}).')
+                        raise err
+                    elif tried > max_retry:
+                        logger.error(f'Request on "{suffix}" failed, tried {tried} times (reached max retry count).')
+                        raise err
                     else:
                         # Wait longer after every attempt
                         delay = 3 * tried * tried
