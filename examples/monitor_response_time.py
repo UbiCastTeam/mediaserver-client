@@ -26,7 +26,7 @@ if __name__ == '__main__':
         before = time.time()
         print(f'{begin} ping')
         url = f'/?usage=mytest&ts={before}'
-        print(msc.api(url))
+        print(msc.api(url, timeout=2))
         took = int(1000 * (time.time() - before))
         color = DEFAULT
         if took > 3000:
