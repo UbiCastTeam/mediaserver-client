@@ -21,7 +21,8 @@ def add_media(client, title=None, file_path=None, progress_callback=None, progre
     if title:
         metadata['title'] = title
     if file_path:
-        metadata['code'] = client.chunked_upload(file_path, progress_callback=progress_callback, progress_data=progress_data, max_retry=max_retry)
+        upload_retry = max_retry if max_retry is not None else 10
+        metadata['code'] = client.chunked_upload(file_path, progress_callback=progress_callback, progress_data=progress_data, max_retry=upload_retry)
     response = client.api('medias/add/', method='post', data=metadata, timeout=timeout, max_retry=max_retry)
     return response
 

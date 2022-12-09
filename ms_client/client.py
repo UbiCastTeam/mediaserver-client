@@ -208,7 +208,7 @@ class MediaServerClient():
         return self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
 
     def get_max_retry(self, max_retry=None):
-        value = max_retry if max_retry is not None else (self.conf['MAX_RETRY'] or 0)
+        value = max_retry if max_retry is not None else (self.conf.get('MAX_RETRY') or 0)
         if value < 0:
             raise ValueError('The "max_retry" argument must be greater than or equal 0.')
         return value
