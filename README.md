@@ -6,55 +6,84 @@
 A python3 reference implementation of an UbiCast Nudgis API client.
 Nudgis was called MediaServer in the past but the internal name of Nudgis is still MediaServer.
 
+## Requirements
+
+git
+python >= 3.7 (download the latest stable release from https://www.python.org/downloads/)
+
+Optional:
+* python3-venv
 
 ## Installation
 
-To install the latest release of the client from PyPI :
-
-```sh
-pip install mediaserver-api-client
-```
+### Linux & OSX
 
 For development, the package can be installed in editable mode to allow changes on it :
 
 ```sh
-git clone git@github.com:UbiCastTeam/mediaserver-client.git
+git clone https://github.com/UbiCastTeam/mediaserver-client.git
 cd mediaserver-client/
-# there it's recommended to create/enable some virtualenv
-pip install --editable .
+python3 -m venv .env
+source .env/bin/activate  # remember to run this every time you enter the folder and need to restore the environment
+python3 -m pip install --editable .
 ```
 
+If you want to install it system-wide as dependency, the releases are available on pypi:
+```sh
+pip install mediaserver-api-client
+```
 
-## Important
+### Windows
 
-For production use, it is recommended to use the branch named "stable". The "master" branch is used for development.
+* Open a cmd.exe or Powershell and check python is available with `py --version` which should display the Python version
+* From this project root path, run `py -m pip install --editable .`
+* Check it works with:
 
+```
+$ ./examples/ping_server.py
+Traceback (most recent call last):
+  File "/home/fthiery/src/ubicast/github/mediaserver-client/./examples/ping_server.py", line 17, in <module>
+    print(msc.api('/'))
+  File "/home/fthiery/src/ubicast/github/mediaserver-client/ms_client/client.py", line 174, in api
+    self.check_conf()
+  File "/home/fthiery/src/ubicast/github/mediaserver-client/ms_client/client.py", line 67, in check_conf
+    configuration_lib.check_conf(self.conf)
+  File "/home/fthiery/src/ubicast/github/mediaserver-client/ms_client/lib/configuration.py", line 84, in check_conf
+    raise ValueError('The value of "SERVER_URL" is not set. Please configure it.')
+ValueError: The value of "SERVER_URL" is not set. Please configure it.
+```
+
+Despite the error above, it shows that the installation is complete.
+
+## Configuration
+
+Copy the provided `config.json.example` file into e.g. `myconfig.json`, edit it with a text editor and fill the URL and API KEY.
+
+* Check it works with:
+
+Linux:
+```
+$ python3 ./examples/ping.py myconfig.json
+{'success': True, 'mediaserver': '11.1.1'}
+```
+Windows:
+```
+$ py ./examples/ping.py myconfig.json
+{'success': True, 'mediaserver': '11.1.1'}
+```
 
 ## Client class instantiation
 
 The client class (`ms_client`.`client`.`MediaServerClient`) takes two arguments:
-* `local_conf`: This argument can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example). The default value is `None`, which means no configuration.
+* `local_conf`: This argument can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example) -- only aplicable from running scripts from within the server running mediaserver (Nudgis). The default value is `None`, which means no configuration.
 * `setup_logging`: This argument must be a boolean. If set to `True`, the logging to console will be configured. The default value is `True`.
-
 
 ## Configuration
 
 You can see available parameters in the default configuration file :
 [Default configuration](/ms_client/conf.py)
 
-The local configuration should be a json file.
-
-
-## Notes about older client
-
-If you are using the first version of this client (a single file named mediaserver_api_client.py), here are the steps to update your client:
-
-* Remove the old client file (mediaserver_api_client.py).
-* Install the new client using the setup.py.
-* Replace the import path of `MediaServerClient` (see examples).
-* Replace the arguments named `config_dict` and `config_path` by `local_conf` in the `MediaServerClient` init.
-* Replace all occurences of `MediaServerClient`.`config` by `MediaServerClient`.`conf`.
-
+The local configuration must be a json file.
 
 ## Examples
 
