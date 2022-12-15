@@ -35,22 +35,41 @@ pip install mediaserver-api-client
 
 ### Windows
 
-* Open a cmd.exe or Powershell and check python is available with `py --version` which should display the Python version
-* From this project root path, run `py -m pip install --editable .`
+* Open cmd.exe and check python is available with `py --version` which should display the Python version
+
+```
+>py --version
+Python 3.11.1
+```
+
+* From this project root path, run:
+
+```
+> py -m venv .env
+> ".env/Scripts/activate.bat"
+> pip install .
+``` 
+ 
 * Check it works with:
 
 ```
-$ ./examples/ping_server.py
+>py -m examples.ping_server
 Traceback (most recent call last):
-  File "/home/fthiery/src/ubicast/github/mediaserver-client/./examples/ping_server.py", line 17, in <module>
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\User\src\mediaserver-client\examples\ping_server.py", line 17, in <module>
     print(msc.api('/'))
-  File "/home/fthiery/src/ubicast/github/mediaserver-client/ms_client/client.py", line 174, in api
+          ^^^^^^^^^^^^
+  File "C:\Users\User\src\mediaserver-client\ms_client\client.py", line 221, in api
+    result = self.request(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\src\mediaserver-client\ms_client\client.py", line 98, in request
     self.check_conf()
-  File "/home/fthiery/src/ubicast/github/mediaserver-client/ms_client/client.py", line 67, in check_conf
+  File "C:\Users\User\src\mediaserver-client\ms_client\client.py", line 71, in check_conf
     configuration_lib.check_conf(self.conf)
-  File "/home/fthiery/src/ubicast/github/mediaserver-client/ms_client/lib/configuration.py", line 84, in check_conf
-    raise ValueError('The value of "SERVER_URL" is not set. Please configure it.')
-ValueError: The value of "SERVER_URL" is not set. Please configure it.
+  File "C:\Users\User\src\mediaserver-client\ms_client\lib\configuration.py", line 87, in check_conf
+    raise ConfigurationError('The value of "SERVER_URL" is not set. Please configure it.')
+ms_client.lib.configuration.ConfigurationError: The value of "SERVER_URL" is not set. Please configure it.
 ```
 
 Despite the error above, it shows that the installation is complete.
