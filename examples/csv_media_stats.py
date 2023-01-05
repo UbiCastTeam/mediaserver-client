@@ -106,28 +106,6 @@ class Stats:
 
         return row
 
-    def parse_duration(self, dur):
-        #'1 h 51 m 21 s'
-        fields = dur.split(' ')
-        hours_index = minutes_index = seconds_index = None
-
-        if len(fields) == 6:
-            hours_index = 0
-            minutes_index = 2
-            seconds_index = 4
-        elif len(fields) == 4:
-            minutes_index = 0
-            seconds_index = 2
-        elif len(fields) == 2:
-            seconds_index = 0
-
-        hours = int(fields[hours_index]) if hours_index is not None else 0
-        minutes = int(fields[minutes_index]) if minutes_index is not None else 0
-        seconds = int(fields[seconds_index]) if seconds_index is not None else 0
-
-        total_seconds = hours * 3600 + minutes * 60 + seconds
-        return total_seconds
-
     def display_stats(self):
         upload_types_count = {
             'hardware': 0,
@@ -160,7 +138,7 @@ class Stats:
         for media in self.media_list:
             origin = media['origin']
             speaker_email = media['speaker_email']
-            duration_seconds = self.parse_duration(media['duration'])
+            duration_seconds = int(media['duration']) if media['duration'] else 0
             size_bytes = int(media['storage_used'])
 
             try:
