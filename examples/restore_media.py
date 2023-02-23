@@ -149,7 +149,7 @@ def _restore_file(msc, path, top_channel_path):
         channel_target = metadata['category']
     # add media if needed
     if not url:
-        item = msc.add_media(file_path=path, channel=channel_target, transcode='yes', detect_slides='no', autocam='no')
+        item = msc.add_media(file_path=path, channel=channel_target, transcode='yes', detect_slides='no', autocam='no', own_media='no')
         oid = item['oid']
         url = msc.conf['SERVER_URL'] + '/permalink/' + oid + '/'
         is_new = True
