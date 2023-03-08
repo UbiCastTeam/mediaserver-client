@@ -43,4 +43,7 @@ BASE_CONF = {
 
     # Chunk size for uploads
     'UPLOAD_CHUNK_SIZE': 5242880,
+
+    # Maximum number of files per request
+    'UPLOAD_MAX_FILES': 100,
 }

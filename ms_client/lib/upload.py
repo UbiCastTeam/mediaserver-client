@@ -126,8 +126,7 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
     # Get configuration
     max_size = client.conf['UPLOAD_CHUNK_SIZE']
     logger.debug(f'HLS upload requests size limit: {max_size} B.')
-    # Limit number of open files if max size is above or almost equal to MediaServer memory upload limit
-    max_files = 500 if max_size > 30_000_000 else None
+    max_files = client.conf['UPLOAD_MAX_FILES']
     logger.debug(f'HLS upload files per request limit: {max_files}.')
 
     # Send ts fragments
@@ -139,13 +138,15 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
     begin = time.time()
     for ts_path in ts_fragments:
         if not ts_path.is_file():
-            logger.warning(f'Found a non file object in the ts fragments dir "{ts_path.name}". The object will be ignored.')
+            logger.warning(f'Found an element which is not a file in the ts fragments dir "{ts_path.name}". The element will be ignored.')
             continue
+
         size = ts_path.stat().st_size
         files_size += size
         files_list.append((ts_path, size))
         total_files_count += 1
-        if files_size > max_size or (max_files and len(files_list) >= max_files):
+
+        if files_size > max_size or len(files_list) >= max_files:
             # Send files in list
             logger.info(f'Uploading {len(files_list)} files ({(files_size / 1_000_000):.2f} MB, only fragments) of "{ts_dir}" in one request.')
             total_size += files_size
@@ -172,7 +173,7 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
     size = m3u8_path.stat().st_size
     files_size += size
     files_list.append((m3u8_path, size))
-    logger.info(f'Uploading {len(files_list)} files ({(files_size / 1_000_000):.2f} MB, fragments the playlist) of "{ts_dir}" in one request.')
+    logger.info(f'Uploading {len(files_list)} files ({(files_size / 1_000_000):.2f} MB, fragments and the playlist) of "{ts_dir}" in one request.')
     total_size += files_size
     data = dict(dir_name=remote_dir, hls_name=ts_dir.name)
     files = {}
