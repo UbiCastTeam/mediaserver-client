@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-MediaServer client upload library
+MediaServer client content library
 This module is not intended to be used directly, only the client class should be used.
 """
 import logging
