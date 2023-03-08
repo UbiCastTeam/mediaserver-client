@@ -9,7 +9,7 @@ Nudgis was called MediaServer in the past but the internal name of Nudgis is sti
 ## Requirements
 
 git
-python >= 3.7 (download the latest stable release from https://www.python.org/downloads/)
+python >= 3.9 (download the latest stable release from https://www.python.org/downloads/)
 
 Optional:
 * python3-venv
