@@ -9,7 +9,7 @@ test:
 	python3 -m unittest discover tests/ -v
 
 build: clean
-	python setup.py sdist bdist_wheel
+	python3 setup.py sdist bdist_wheel
 
 install: build
 	pip install -I dist/*.whl
