@@ -3,7 +3,6 @@ MediaServer client upload library
 This module is not intended to be used directly, only the client class should be used.
 """
 from pathlib import Path
-import hashlib
 import logging
 import math
 import time
@@ -11,7 +10,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, check_md5=True, timeout=120, max_retry=10):
+def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, timeout=300, max_retry=10):
     """
     Function to send a file using the chunked upload.
     """
@@ -29,8 +28,6 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
     start_offset = 0
     end_offset = min(chunk_size, total_size) - 1
     data = {}
-    if check_md5:
-        md5sum = hashlib.md5()
     url = client.get_full_url(url_prefix + 'upload/')
     begin = time.time()
     with open(file_path, 'rb') as fo:
@@ -39,8 +36,6 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
             # Send chunk
             chunk_index += 1
             logger.debug(f'Uploading chunk {chunk_index}/{chunks_count}.')
-            if check_md5:
-                md5sum.update(chunk)
             headers = {'Content-Range': f'bytes {start_offset}-{end_offset}/{total_size}'}
             files = {'file': (file_path.name, chunk)}
             tried = 0
@@ -91,11 +86,8 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
     logger.info(f'Upload finished, average bandwidth was {bandwidth:2f} Mbits/s.')
 
     # Mark file as completed
-    # This will trigger an md5 sum check and will move the file to its correct location in the server
-    if check_md5:
-        data['md5'] = md5sum.hexdigest()
-    else:
-        data['no_md5'] = 'yes'
+    data['no_md5'] = 'yes'  # The md5 check is deprecated since 2023-04-20 and has been removed in Nudgis v11.3.1
+    data['expected_size'] = str(total_size)
     if remote_path:
         data['path'] = remote_path
     response = client.api(url_prefix + 'upload/complete/', method='post', data=data, timeout=timeout, max_retry=max_retry)
@@ -107,7 +99,7 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
     return data['upload_id']
 
 
-def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progress_data=None, timeout=3600, max_retry=10):
+def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progress_data=None, timeout=600, max_retry=10):
     """
     Method to upload an HLS video (m3u8 + ts fragments).
     This method is faster than "chunked_upload" because "chunked_upload" is very slow for a large number of tiny files.

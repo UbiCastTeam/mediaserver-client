@@ -23,11 +23,11 @@ def upload_hls_files(msc, uid, tmp_path):
     msc.hls_upload(tmp_path + '.m3u8', f'rtest-{uid}')
 
 
-def upload_chunked_files(msc, uid, files_list, md5=False):
-    logger.info(f'Starting chunked upload (#{uid}, check_md5={md5}).')
+def upload_chunked_files(msc, uid, files_list):
+    logger.info(f'Starting chunked upload (#{uid}).')
     for i, path in enumerate(files_list):
         logger.info(f'Process #{uid}, file {i + 1}/{len(files_list)}')
-        msc.chunked_upload(file_path=path, remote_path=f'rtest-{uid}/' + os.path.basename(path), check_md5=md5)
+        msc.chunked_upload(file_path=path, remote_path=f'rtest-{uid}/' + os.path.basename(path))
 
 
 def strict_positive_int_type(value):
@@ -84,7 +84,7 @@ def run_test(args):
         if args.m3u8:
             args_list.append((msc, i, tmp_path))
         else:
-            args_list.append((msc, i, files_list, args.md5))
+            args_list.append((msc, i, files_list))
     end = time.time()
     duration = end - start
     duration = round(duration, 2)
@@ -133,7 +133,6 @@ class Params:
     chunk: int
     processes: int
     m3u8: bool
-    md5: bool
     debug: bool
 
 
@@ -146,7 +145,6 @@ def main():
     parser.add_argument('-k', '--chunk', action='store', default=None, type=strict_positive_int_type, help='The size in kB of the chunks to send. default is 5 MB.')
     parser.add_argument('-p', '--processes', action='store', default=1, type=strict_positive_int_type, help='Number of processes to use to upload (parallel upload). Each process will upload all files.')
     parser.add_argument('-m', '--m3u8', action='store_true', help='Use HLS upload API instead of chunked upload API.')
-    parser.add_argument('-5', '--md5', action='store_true', help='Check md5 or not when using chunked upload.')
     parser.add_argument('-d', '--debug', action='store_true', help='Set log level to debug.')
     parser.add_argument('-b', '--bench', action='store_true', help='Run script in benchmark mode. Other arguments will be ignored in this mode except "conf", "chunk" and "debug".')
     args = parser.parse_args()
@@ -163,8 +161,7 @@ def main():
         results = []
         test_types = [
             {'m3u8': True},
-            {'md5': True},
-            {'md5': False},
+            {'m3u8': False},
         ]
         test_data = [
             {'processes': 1, 'count': 5, 'size': 10},
@@ -180,7 +177,6 @@ def main():
         steps = len(test_types) * len(test_data)
         for test_type in test_types:
             m3u8 = test_type.get('m3u8', False)
-            md5 = test_type.get('md5', False)
             for entry in test_data:
                 # Number of steps: 3 * 3 * 5 * 5 * 4 = 400
                 params = Params(
@@ -190,7 +186,6 @@ def main():
                     chunk=args.chunk,
                     processes=entry['processes'],
                     m3u8=m3u8,
-                    md5=md5,
                     debug=args.debug,
                 )
                 logger.info(f'\033[94m-- Step {len(results) + 1}/{steps} Running with {params}...\033[0m')
@@ -200,13 +195,13 @@ def main():
                 result = run_test(params)
                 if not result:
                     return 1
-                result = (params.m3u8, params.md5, params.processes) + result
+                result = (params.m3u8, params.processes) + result
                 results.append(','.join([str(v) for v in result]))
 
         csv = '/tmp/ms-test-upload-bench.csv'
         logger.info(f'CSV report will be written in "{csv}".')
         with open(csv, 'w') as fo:
-            fo.write('hls upload,md5 enabled,processes,total files,total size,average speed,duration\n')
+            fo.write('hls upload,processes,total files,total size,average speed,duration\n')
             for result in results:
                 fo.write(result + '\n')
         logger.info('Done.')
