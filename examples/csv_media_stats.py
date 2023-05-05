@@ -54,11 +54,12 @@ def print_dict_stats(d, title, threshold_percent=0, do_format=None,):
     total = sum(d.values())
     skipped = 0
     for key, val in d.items():
-        percent = get_percent(val, total)
-        if threshold_percent and percent <= threshold_percent:
-            skipped += val
-        else:
-            print(f'{key}: {get_percent_string(val, total, do_format)}')
+        if val > 0:
+            percent = get_percent(val, total)
+            if threshold_percent and percent <= threshold_percent:
+                skipped += val
+            else:
+                print(f'{key}: {get_percent_string(val, total, do_format)}')
     if skipped:
         print(f'Various (below {threshold_percent}%: {get_percent_string(skipped, total)}')
 
@@ -118,6 +119,9 @@ class Stats:
             'videoconferencing': 0,
             'mediaimport': 0,
             'mediasite-migration': 0,
+            'mediaserver-client': 0,
+            'default': 0,
+            'empty': 0,
         }
 
         upload_types_duration = dict(upload_types_count)
@@ -165,6 +169,8 @@ class Stats:
                     mtype = 'external-resource'
                 elif origin == 'Manual (form: AddVODWithYouTubeForm)':
                     mtype = 'youtube'
+                elif origin == 'Manual (form: AddVODEmptyForm)':
+                    mtype = 'empty'
                 elif origin.startswith('webstudio_'):
                     #webstudio_linux_chromium_102
                     mtype = 'webstudio'
@@ -177,6 +183,10 @@ class Stats:
                     mtype = 'mediaimport'
                 elif origin in ['mediatransfer', 'mediasite-migration-client']:
                     mtype = 'mediasite-migration'
+                elif origin == 'python-api-client':
+                    mtype = 'mediaserver-client'
+                elif origin == 'API':
+                    mtype = 'default'
                 else:
                     logging.warning(f'Unsupported origin "{origin}" for {media}')
 
