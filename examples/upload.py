@@ -3,7 +3,9 @@
 '''
 Script to upload videos
 
-./examples/upload.py --config beta.json --input test.mp4 --title "mytitle" --channel "mscpath-A/B/C" --speaker-email "test@test.com"
+./examples/upload.py
+    --config beta.json --input test.mp4 --title "mytitle"
+    --channel "mscpath-A/B/C" --speaker-email "test@test.com"
 '''
 import argparse
 import logging

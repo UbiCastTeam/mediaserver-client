@@ -139,14 +139,31 @@ class Params:
 def main():
     # Parse args
     parser = argparse.ArgumentParser(description=__doc__.strip())
-    parser.add_argument('-c', '--conf', action='store', default=None, help='Configuration file path or instance unix user. Use local configuration file by default.')
-    parser.add_argument('-n', '--count', action='store', default=10, type=strict_positive_int_type, help='The number of files to send. Default is 10.')
-    parser.add_argument('-s', '--size', action='store', default=1000, type=strict_positive_int_type, help='The size in kB of the files to send. default is 1 MB.')
-    parser.add_argument('-k', '--chunk', action='store', default=None, type=strict_positive_int_type, help='The size in kB of the chunks to send. default is 5 MB.')
-    parser.add_argument('-p', '--processes', action='store', default=1, type=strict_positive_int_type, help='Number of processes to use to upload (parallel upload). Each process will upload all files.')
-    parser.add_argument('-m', '--m3u8', action='store_true', help='Use HLS upload API instead of chunked upload API.')
-    parser.add_argument('-d', '--debug', action='store_true', help='Set log level to debug.')
-    parser.add_argument('-b', '--bench', action='store_true', help='Run script in benchmark mode. Other arguments will be ignored in this mode except "conf", "chunk" and "debug".')
+    parser.add_argument(
+        '-c', '--conf', action='store', default=None,
+        help='Configuration file path or instance unix user. Use local configuration file by default.')
+    parser.add_argument(
+        '-n', '--count', action='store', default=10, type=strict_positive_int_type,
+        help='The number of files to send. Default is 10.')
+    parser.add_argument(
+        '-s', '--size', action='store', default=1000, type=strict_positive_int_type,
+        help='The size in kB of the files to send. default is 1 MB.')
+    parser.add_argument(
+        '-k', '--chunk', action='store', default=None, type=strict_positive_int_type,
+        help='The size in kB of the chunks to send. default is 5 MB.')
+    parser.add_argument(
+        '-p', '--processes', action='store', default=1, type=strict_positive_int_type,
+        help='Number of processes to use to upload (parallel upload). Each process will upload all files.')
+    parser.add_argument(
+        '-m', '--m3u8', action='store_true',
+        help='Use HLS upload API instead of chunked upload API.')
+    parser.add_argument(
+        '-d', '--debug', action='store_true',
+        help='Set log level to debug.')
+    parser.add_argument(
+        '-b', '--bench', action='store_true',
+        help='Run script in benchmark mode. '
+             'Other arguments will be ignored in this mode except "conf", "chunk" and "debug".')
     args = parser.parse_args()
 
     log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'

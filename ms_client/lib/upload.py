@@ -10,7 +10,8 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def chunked_upload(client, file_path, remote_path=None, progress_callback=None, progress_data=None, timeout=300, max_retry=10):
+def chunked_upload(client, file_path, remote_path=None, progress_callback=None,
+                   progress_data=None, timeout=300, max_retry=10):
     """
     Function to send a file using the chunked upload.
     """
@@ -43,7 +44,14 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
                 tried += 1
                 try:
                     # Use client.request to handle retry for offset errors
-                    response = client.request(url, method='post', headers=headers, data=data, files=files, timeout=timeout)
+                    response = client.request(
+                        url,
+                        method='post',
+                        headers=headers,
+                        data=data,
+                        files=files,
+                        timeout=timeout
+                    )
                     break
                 except client.RequestError as err:
                     if err.status_code == 400:
@@ -56,18 +64,30 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
                             logger.info(f'Offset issue detected during upload, ignoring error: {err}')
                             break
                         # No need to retry for other 400 errors, the result will be the same
-                        logger.error(f'Chunk upload failed, tried {tried} times (no retry for the status code {err.status_code} in chunk upload).')
+                        logger.error(
+                            f'Chunk upload failed, tried {tried} times '
+                            f'(no retry for the status code {err.status_code} in chunk upload).'
+                        )
                         raise err
                     elif err.status_code in client.conf['RETRY_EXCEPT']:
-                        logger.error(f'Chunk upload failed, tried {tried} times (no retry for the status code {err.status_code}).')
+                        logger.error(
+                            f'Chunk upload failed, tried {tried} times '
+                            f'(no retry for the status code {err.status_code}).'
+                        )
                         raise err
                     elif tried > max_retry:
-                        logger.error(f'Chunk upload failed, tried {tried} times (reached max retry count).')
+                        logger.error(
+                            f'Chunk upload failed, tried {tried} times '
+                            f'(reached max retry count).'
+                        )
                         raise err
                     else:
                         # Wait longer after every attempt
                         delay = 3 * tried * tried
-                        logger.error(f'Chunk upload failed, tried {tried} times (max {max_retry}), retrying in {delay}s.')
+                        logger.error(
+                            f'Chunk upload failed, tried {tried} times '
+                            f'(max {max_retry}), retrying in {delay}s.'
+                        )
                         time.sleep(delay)
 
             # Notify progress callback
@@ -90,7 +110,13 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
     data['expected_size'] = str(total_size)
     if remote_path:
         data['path'] = remote_path
-    response = client.api(url_prefix + 'upload/complete/', method='post', data=data, timeout=timeout, max_retry=max_retry)
+    response = client.api(
+        url_prefix + 'upload/complete/',
+        method='post',
+        data=data,
+        timeout=timeout,
+        max_retry=max_retry
+    )
 
     # Notify progress callback
     if progress_callback:
@@ -99,7 +125,8 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None, 
     return data['upload_id']
 
 
-def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progress_data=None, timeout=600, max_retry=10):
+def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None,
+               progress_data=None, timeout=600, max_retry=10):
     """
     Method to upload an HLS video (m3u8 + ts fragments).
     This method is faster than "chunked_upload" because "chunked_upload" is very slow for a large number of tiny files.
@@ -130,7 +157,10 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
     begin = time.time()
     for ts_path in ts_fragments:
         if not ts_path.is_file():
-            logger.warning(f'Found an element which is not a file in the ts fragments dir "{ts_path.name}". The element will be ignored.')
+            logger.warning(
+                f'Found an element which is not a file in the ts fragments dir "{ts_path.name}". '
+                'The element will be ignored.'
+            )
             continue
 
         size = ts_path.stat().st_size
@@ -140,7 +170,10 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
 
         if files_size > max_size or len(files_list) >= max_files:
             # Send files in list
-            logger.info(f'Uploading {len(files_list)} files ({(files_size / 1_000_000):.2f} MB, only fragments) of "{ts_dir}" in one request.')
+            logger.info(
+                f'Uploading {len(files_list)} files ({(files_size / 1_000_000):.2f} MB, only fragments) '
+                f'of "{ts_dir}" in one request.'
+            )
             total_size += files_size
             data = dict(dir_name=remote_dir, hls_name=ts_dir.name)
 
@@ -150,7 +183,14 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
                 data[path.name] = str(size)
                 with open(path, 'rb') as fo:
                     files[path.name] = (path.name, fo.read())
-            response = client.api('upload/hls/', method='post', data=data, files=files, timeout=timeout, max_retry=max_retry)
+            response = client.api(
+                'upload/hls/',
+                method='post',
+                data=data,
+                files=files,
+                timeout=timeout,
+                max_retry=max_retry
+            )
 
             # Notify progress callback
             if progress_callback:
@@ -165,7 +205,10 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
     size = m3u8_path.stat().st_size
     files_size += size
     files_list.append((m3u8_path, size))
-    logger.info(f'Uploading {len(files_list)} files ({(files_size / 1_000_000):.2f} MB, fragments and the playlist) of "{ts_dir}" in one request.')
+    logger.info(
+        f'Uploading {len(files_list)} files ({(files_size / 1_000_000):.2f} MB, fragments and the playlist) '
+        f'of "{ts_dir}" in one request.'
+    )
     total_size += files_size
     data = dict(dir_name=remote_dir, hls_name=ts_dir.name)
     files = {}
@@ -175,9 +218,19 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None, progres
         data[path.name] = str(size)
         with open(path, 'rb') as fo:
             files[path.name] = (path.name, fo.read())
-    client.api('upload/hls/', method='post', data=data, files=files, timeout=timeout, max_retry=max_retry)
+    client.api(
+        'upload/hls/',
+        method='post',
+        data=data,
+        files=files,
+        timeout=timeout,
+        max_retry=max_retry
+    )
     bandwidth = total_size * 8 / ((time.time() - begin) * 1_000_000)
-    logger.info(f'Upload finished ({total_files_count} files in "{remote_dir}"), average bandwidth: {bandwidth:.2f} Mbits/s')
+    logger.info(
+        f'Upload finished ({total_files_count} files in "{remote_dir}"), '
+        f'average bandwidth: {bandwidth:.2f} Mbits/s'
+    )
 
     # Notify progress callback
     if progress_callback:

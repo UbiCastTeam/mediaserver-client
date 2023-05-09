@@ -28,11 +28,13 @@ class MediaServerClient():
     """
     MediaServer API client class
     """
-    DEFAULT_CONF = None  # Can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
-    RequestError = MediaServerRequestError  # A reference to the error class to avoid circular imports in the client lib dir
+    # `DEFAULT_CONF` can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example).
+    DEFAULT_CONF = None
+    # `RequestError` is a reference to the error class to avoid circular imports in the client lib dir.
+    RequestError = MediaServerRequestError
 
     def __init__(self, local_conf=None, setup_logging=True):
-        # "local_conf" can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
+        # `local_conf` can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
         # Setup logging
         if setup_logging:
             log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'
@@ -92,7 +94,8 @@ class MediaServerClient():
                 logger.debug(f'MediaServer version is: {self._server_version}')
         return self._server_version
 
-    def request(self, url, method='get', headers=None, params=None, data=None, files=None, parse_json=True, timeout=None, stream=False, ignored_status_codes=None, authenticate=True):
+    def request(self, url, method='get', headers=None, params=None, data=None, files=None, parse_json=True,
+                timeout=None, stream=False, ignored_status_codes=None, authenticate=True):
         self.check_conf()
 
         if ignored_status_codes is None:
@@ -190,7 +193,9 @@ class MediaServerClient():
                 )
             elif ignored_status_codes and status_code in ignored_status_codes:
                 # Ignored status codes do not trigger retries nor raise exceptions
-                logger.info(f'Not raising exception for ignored status code {status_code} on url {url} ignored: {response}')
+                logger.info(
+                    f'Not raising exception for ignored status code {status_code} on url {url} ignored: {response}'
+                )
                 return None
             else:
                 raise MediaServerRequestError(
@@ -227,15 +232,24 @@ class MediaServerClient():
                 except MediaServerRequestError as err:
                     # Retry after errors like timeout or RemoteDisconnected errors
                     if err.status_code in self.conf['RETRY_EXCEPT']:
-                        logger.error(f'Request on "{suffix}" failed, tried {tried} times (no retry for the status code {err.status_code}).')
+                        logger.error(
+                            f'Request on "{suffix}" failed, tried {tried} times '
+                            f'(no retry for the status code {err.status_code}).'
+                        )
                         raise err
                     elif tried > max_retry:
-                        logger.error(f'Request on "{suffix}" failed, tried {tried} times (reached max retry count).')
+                        logger.error(
+                            f'Request on "{suffix}" failed, tried {tried} times '
+                            f'(reached max retry count).'
+                        )
                         raise err
                     else:
                         # Wait longer after every attempt
                         delay = 3 * tried * tried
-                        logger.error(f'Request on "{suffix}" failed, tried {tried} times (max {max_retry}), retrying in {delay}s.')
+                        logger.error(
+                            f'Request on "{suffix}" failed, tried {tried} times '
+                            f'(max {max_retry}), retrying in {delay}s.'
+                        )
                         time.sleep(delay)
                         # Seek to 0 in file objects
                         # (file objects using a value different from 0 as initial position is not supported)

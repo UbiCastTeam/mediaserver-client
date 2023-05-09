@@ -134,7 +134,11 @@ def _restore_file(msc, path, top_channel_path):
         if old_version:
             print('The server version is too old, unable to check media existence.')
         else:
-            response = msc.api('medias/get/', params=dict(parents=channel_path, title=metadata['title']), ignored_status_codes=[404])
+            response = msc.api(
+                'medias/get/',
+                params=dict(parents=channel_path, title=metadata['title']),
+                ignored_status_codes=[404]
+            )
             if response:
                 oid = response['info']['oid']
                 url = msc.conf['SERVER_URL'] + '/permalink/' + oid + '/'
@@ -143,18 +147,31 @@ def _restore_file(msc, path, top_channel_path):
                     # check resource if media is a video
                     resources = msc.api('medias/resources-list/', params=dict(oid=oid))['resources']
                     if not resources:
-                        raise Exception('The media already exist but has no resources. Please restore the resource manually in media "%s".' % url)
+                        raise Exception(
+                            'The media already exist but has no resources. '
+                            f'Please restore the resource manually in media "{url}".'
+                        )
         channel_target = 'mscpath-' + channel_path
     else:
         channel_target = metadata['category']
     # add media if needed
     if not url:
-        item = msc.add_media(file_path=path, channel=channel_target, transcode='yes', detect_slides='no', autocam='no', own_media='no')
+        item = msc.add_media(
+            file_path=path,
+            channel=channel_target,
+            transcode='yes',
+            detect_slides='no',
+            autocam='no',
+            own_media='no'
+        )
         oid = item['oid']
         url = msc.conf['SERVER_URL'] + '/permalink/' + oid + '/'
         is_new = True
     if old_version and special_res:
-        raise Exception('The media metadata have been restored but the media uses a resource that should be restored manually:\n%s\nMedia url: %s' % (special_res, url))
+        raise Exception(
+            'The media metadata have been restored but the media uses a resource that should be restored manually:'
+            f'\n{special_res}\nMedia url: {url}'
+        )
     print('Media restored: "%s".' % url)
     return is_new, url
 
@@ -180,7 +197,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--channel',
         dest='channel',
-        help='Path to an existing channel in which all restored media should be added. The path should be splitted by slashes and can contain slug or title. Example: "Channel A/Channel B". If no value is given, media will be restored in their original channel.',
+        help='Path to an existing channel in which all restored media should be added. '
+             'The path should be splitted by slashes and can contain slug or title. '
+             'Example: "Channel A/Channel B". If no value is given, media will be restored in their original channel.',
         required=False,
         type=str)
 

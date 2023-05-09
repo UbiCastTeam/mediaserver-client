@@ -34,7 +34,12 @@ OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
 
 
 def get_repr(item):
-    return '%s %s "%s%s"' % (OBJECT_TYPES[item['oid'][0]], item['oid'], item['title'][:40], ('...' if len(item['title']) > 40 else ''))
+    return '%s %s "%s%s"' % (
+        OBJECT_TYPES[item['oid'][0]],
+        item['oid'],
+        item['title'][:40],
+        ('...' if len(item['title']) > 40 else '')
+    )
 
 
 def get_item_folder_name(item):
@@ -68,7 +73,10 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
     while more:
         if verbose:
             print('# Making request on latest (start=%s)' % start)
-        response = msc.api('latest/', params=dict(start=start, order_by='added', content='vlp', count=20))
+        response = msc.api(
+            'latest/',
+            params=dict(start=start, order_by='added', content='vlp', count=20)
+        )
         start = response['max_date']
         more = response['more']
         for item in response['items']:
@@ -89,15 +97,19 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
                     info = msc.api('channels/get/', params=dict(oid=channel['oid']))['info']
                     folder_name = get_item_folder_name(info)
                     if folder_name:
-                        print_path_if_exists('/home/%s/msinstance/media/public/%s/' % (user, folder_name), fout)
-                        print_path_if_exists('/home/%s/msinstance/media/protected/%s/' % (user, folder_name), fout)
+                        print_path_if_exists(
+                            '/home/%s/msinstance/media/public/%s/' % (user, folder_name), fout)
+                        print_path_if_exists(
+                            '/home/%s/msinstance/media/protected/%s/' % (user, folder_name), fout)
                     elif verbose:
                         print('# No folder name found for channel %s.' % get_repr(info))
             # get media files
             folder_name = get_item_folder_name(item)
             if folder_name:
-                print_path_if_exists('/home/%s/msinstance/media/public/%s/' % (user, folder_name), fout)
-                print_path_if_exists('/home/%s/msinstance/media/protected/%s/' % (user, folder_name), fout)
+                print_path_if_exists(
+                    '/home/%s/msinstance/media/public/%s/' % (user, folder_name), fout)
+                print_path_if_exists(
+                    '/home/%s/msinstance/media/protected/%s/' % (user, folder_name), fout)
             elif verbose:
                 print('# No folder name found for media %s.' % get_repr(item))
             # get media resources
@@ -107,11 +119,13 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
                     if res['format'] in ('mp4', 'mp3'):
                         m = re.match(r'^http[s]+://.+/(resources/.+)$', res['file'])
                         if m:
-                            print_path_if_exists('/home/%s/msinstance/media/%s' % (user, m.groups()[0]), fout)
+                            print_path_if_exists(
+                                '/home/%s/msinstance/media/%s' % (user, m.groups()[0]), fout)
     # stats files
     cur_date = from_date
     while cur_date <= to_date:
-        print_path_if_exists('/home/%s/msinstance/stats/%s/%s/%s/' % (user, cur_date.year, cur_date.month, cur_date.day), fout)
+        print_path_if_exists(
+            '/home/%s/msinstance/stats/%s/%s/%s/' % (user, cur_date.year, cur_date.month, cur_date.day), fout)
         cur_date += datetime.timedelta(days=1)
 
     return 0
@@ -133,7 +147,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--period',
         dest='period',
-        help='All files from media added in the given period will be returned. Allowed values: `Xdays` (X has to be replaced with an integer), `YYYY-MM-DD_YYYY-MM-DD` (pick media between the two dates). Default is `7days`.',
+        help='All files from media added in the given period will be returned. '
+             'Allowed values: `Xdays` (X has to be replaced with an integer), '
+             '`YYYY-MM-DD_YYYY-MM-DD` (pick media between the two dates). Default is `7days`.',
         required=False,
         default='7days',
         type=str)
@@ -181,7 +197,18 @@ if __name__ == '__main__':
     verbose = args.verbose or args.output
     if args.output:
         with open(args.output, 'w') as fout:
-            rc = get_files_to_backup(msc, user=args.user, from_date=from_date, to_date=to_date, fout=fout, verbose=verbose)
+            rc = get_files_to_backup(
+                msc,
+                user=args.user,
+                from_date=from_date,
+                to_date=to_date,
+                fout=fout,
+                verbose=verbose)
     else:
-        rc = get_files_to_backup(msc, user=args.user, from_date=from_date, to_date=to_date, verbose=verbose)
+        rc = get_files_to_backup(
+            msc,
+            user=args.user,
+            from_date=from_date,
+            to_date=to_date,
+            verbose=verbose)
     sys.exit(rc)

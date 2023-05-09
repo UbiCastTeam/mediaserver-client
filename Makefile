@@ -1,15 +1,24 @@
-PYFILES = ms_client/ examples/
-
-all:
 
 lint:
-	flake8 ${PYFILES}
+	docker run -v ${CURDIR}:/apps registry.ubicast.net/docker/flake8:latest make lint_local
+
+lint_local:
+	flake8 .
+
+deadcode:
+	docker run -v ${CURDIR}:/apps registry.ubicast.net/docker/vulture:latest make deadcode_local
+
+deadcode_local:
+	vulture --exclude .eggs --min-confidence 90 .
 
 test:
-	python3 -m unittest discover tests/ -v
+	docker run -v ${CURDIR}:/apps registry.ubicast.net/docker/pytest:latest make test_local
+
+test_local:
+	pytest tests/ -vv --color=yes --log-level=DEBUG --cov=ms_client ${PYTEST_ARGS}
 
 build: clean
-	python3 setup.py sdist bdist_wheel
+	python setup.py sdist bdist_wheel
 
 install: build
 	pip install -I dist/*.whl

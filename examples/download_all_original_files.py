@@ -41,7 +41,8 @@ def download_all_original_files(msc, dir_path='videos'):
             else:
                 print('Best quality file for video "%s": %s' % (video_page, best_quality['file']))
                 name = re.sub(r'[^A-Za-z0-9]+', '-', item['title'])[:30]
-                destination = '%s/%s_%s_%sx%s.%s' % (dir_path, item['oid'], name, best_quality['width'], best_quality['height'], best_quality['format'])
+                destination = '%s/%s_%s_%sx%s.%s' % (
+                    dir_path, item['oid'], name, best_quality['width'], best_quality['height'], best_quality['format'])
                 p = subprocess.run(['wget', '--no-check-certificate', best_quality['file'], '-O', destination])
                 if p.returncode != 0:
                     failed.append((item['oid'], best_quality['file'], destination))

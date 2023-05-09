@@ -25,7 +25,11 @@ def process_channel(msc, channel_info, enable_delete=False, videos_reference=Non
 
     # Browse channels from channel parent
     print('Check videos in channel %s %s' % (channel_info['oid'], channel_info['title']))
-    channel_items = msc.api('channels/content/', method='get', params=dict(parent_oid=channel_info['oid'], content='cv'))
+    channel_items = msc.api(
+        'channels/content/',
+        method='get',
+        params=dict(parent_oid=channel_info['oid'], content='cv')
+    )
 
     # Check sub channels
     for entry in channel_items.get('channels', []):
@@ -45,23 +49,37 @@ def process_channel(msc, channel_info, enable_delete=False, videos_reference=Non
 
         # Add video to videos reference as it does not exist
         if not list_oids:
-            videos_reference[video_oid] = {'title': video_title, 'duration': video_duration, 'creation': video_creation}
+            videos_reference[video_oid] = {
+                'title': video_title,
+                'duration': video_duration,
+                'creation': video_creation
+            }
             continue
         for list_oid in list_oids:
             if videos_reference[list_oid]['title'] == video_title:
-                if videos_reference[list_oid]['duration'] == video_duration and videos_reference[list_oid]['creation'] == video_creation:
+                if (
+                    videos_reference[list_oid]['duration'] == video_duration
+                    and videos_reference[list_oid]['creation'] == video_creation
+                ):
                     print('Video  %s is duplicate of %s' % (ms_url + video_oid, ms_url + list_oid))
                     if enable_delete:
                         try:
-                            # msc.api('medias/delete/', method='post', data=dict(oid=video_oid, delete_metadata='yes', delete_resources='yes'))
-                            msc.api('medias/edit/', method='post', data=dict(oid=video_oid, description='Duplicate of ' + ms_url + list_oid))
+                            msc.api(
+                                'medias/delete/',
+                                method='post',
+                                data=dict(oid=video_oid, delete_metadata='yes', delete_resources='yes')
+                            )
                         except Exception as e:
                             print('Failed to delete media %s: %s' % (video_title, e))
                         else:
                             print('Media %s has been deleted successfully from MediaServer.' % video_title)
                 else:
                     # Add video with same title but different duration or creation date
-                    videos_reference[video_oid] = {'title': video_title, 'duration': video_duration, 'creation': video_creation}
+                    videos_reference[video_oid] = {
+                        'title': video_title,
+                        'duration': video_duration,
+                        'creation': video_creation
+                    }
 
 
 def find_duplicate(msc, channel_oid, enable_delete=False):
@@ -69,7 +87,10 @@ def find_duplicate(msc, channel_oid, enable_delete=False):
     try:
         channel_parent = msc.api('channels/get/', method='get', params=dict(oid=channel_oid))
     except Exception as e:
-        print('Please enter valid channel oid or check access permissions. Error when trying to get channel was: %s' % e)
+        print(
+            'Please enter valid channel oid or check access permissions. '
+            f'Error when trying to get channel was: {e}'
+        )
         return 1
     print('Parent Channel is %s' % channel_parent['info']['title'])
     process_channel(msc, channel_parent['info'], enable_delete=enable_delete)

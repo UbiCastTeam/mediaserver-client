@@ -42,7 +42,12 @@ OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
 
 
 def get_repr(item):
-    return '%s %s "%s%s"' % (OBJECT_TYPES[item['oid'][0]], item['oid'], item['title'][:40], ('...' if len(item['title']) > 40 else ''))
+    return '%s %s "%s%s"' % (
+        OBJECT_TYPES[item['oid'][0]],
+        item['oid'],
+        item['title'][:40],
+        ('...' if len(item['title']) > 40 else '')
+    )
 
 
 def get_prefix(item):
@@ -69,7 +74,8 @@ def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=Fal
             print('// %sMedia %s:%s "%s" %s' % (PURPLE, index, DEFAULT, media_link, get_repr(item)))
             media_date = datetime.datetime.strptime(item[date_field][0:10], '%Y-%m-%d').date()
             if media_date > limit_date:
-                print('No backup for media %s because creation date %s is newer than backup date %s' % (get_repr(item), item['creation'], limit_date))
+                print('No backup for media %s because creation date %s is newer than backup date %s' % (
+                    get_repr(item), item['creation'], limit_date))
             else:
                 try:
                     backup_media(item, dir_path)
@@ -77,12 +83,17 @@ def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=Fal
                     print('%s%s%s' % (RED, e, DEFAULT))
                     failed.append((item, str(e)))
                     if enable_delete:
-                        print('Media %s will not be deleted because it has not been successfully downloaded.' % get_repr(item))
+                        print('Media %s will not be deleted because it has not been successfully downloaded.' % (
+                            get_repr(item)))
                 else:
                     backuped.append(item)
                     if enable_delete:
                         try:
-                            msc.api('medias/delete/', method='post', data=dict(oid=item['oid'], delete_metadata='yes', delete_resources='yes'))
+                            msc.api(
+                                'medias/delete/',
+                                method='post',
+                                data=dict(oid=item['oid'], delete_metadata='yes', delete_resources='yes')
+                            )
                         except Exception as e:
                             print('Failed to delete media %s: %s' % (get_repr(item), e))
                         else:
@@ -208,7 +219,8 @@ def download_media_best_resource(msc, item, media_backup_dir, file_prefix, local
         raise Exception('Could not download any resource from list: %s.' % resources)
 
     print('Best quality file for video %s: %s' % (get_repr(item), best_quality['file']))
-    destination_resource = os.path.join(media_backup_dir, 'resource - %s - %sx%s.%s' % (file_prefix, best_quality['width'], best_quality['height'], best_quality['format']))
+    destination_resource = os.path.join(media_backup_dir, 'resource - %s - %sx%s.%s' % (
+        file_prefix, best_quality['width'], best_quality['height'], best_quality['format']))
 
     if best_quality['format'] in ('youtube', 'embed'):
         # dump youtube video id or embed code to a file
@@ -216,7 +228,10 @@ def download_media_best_resource(msc, item, media_backup_dir, file_prefix, local
             fo.write(best_quality['file'])
     else:
         # download resource
-        url_resource = msc.api('download/', params=dict(oid=item['oid'], url=best_quality['file'], redirect='no'))['url']
+        url_resource = msc.api(
+            'download/',
+            params=dict(oid=item['oid'], url=best_quality['file'], redirect='no')
+        )['url']
         if os.path.exists(destination_resource):
             local_size = os.path.getsize(destination_resource)
         if local_size:
@@ -241,13 +256,19 @@ def download_media_metadata(msc, item, media_backup_dir, file_prefix, local_size
         params = dict(oid=item['oid'], annotations='all', resources='no')
         req = msc.api('medias/get/zip/', method='head', params=params, timeout=3600)
         if req.headers.get('Content-Length') == str(local_size):
-            print('Skipping download of zip file for %s because the file already exists and has the correct size.' % item['oid'])
+            print('Skipping download of zip file for %s because the file already exists and has the correct size.' % (
+                item['oid']))
             return
 
     destination_metadata = os.path.join(media_backup_dir, 'metadata %s.zip' % file_prefix)
-    path = msc.download_metadata_zip(item['oid'], destination_metadata, include_annotations='all', include_resources_links='no')
+    path = msc.download_metadata_zip(
+        item['oid'],
+        destination_metadata,
+        include_annotations='all',
+        include_resources_links='no'
+    )
     print('Metadata downloaded for media %s: "%s".' % (get_repr(item), path))
-    return path
+    return str(path)
 
 
 if __name__ == '__main__':
@@ -265,7 +286,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--date',
         dest='limit_date',
-        help='All media created/added (depending on "--use-add-date") prior to the given date will be backuped. Date format: "YYYY-MM-DD".',
+        help=('All media created/added (depending on "--use-add-date") prior to the given date will be backuped. '
+              'Date format: "YYYY-MM-DD".'),
         required=True,
         type=str)
     parser.add_argument(
