@@ -1,37 +1,49 @@
+DOCKER_RUN ?= docker run \
+	--name ms-client-builder \
+	--workdir /apps \
+	--mount type=bind,src=${PWD},dst=/apps \
+	--user "$(shell id -u):$(shell id -g)" \
+	--rm -it
 
 lint:
-	docker run -v ${CURDIR}:/apps registry.ubicast.net/docker/flake8:latest make lint_local
+	${DOCKER_RUN} registry.ubicast.net/docker/flake8:latest make lint_local
 
 lint_local:
 	flake8 .
 
 deadcode:
-	docker run -v ${CURDIR}:/apps registry.ubicast.net/docker/vulture:latest make deadcode_local
+	${DOCKER_RUN} registry.ubicast.net/docker/vulture:latest make deadcode_local
 
 deadcode_local:
 	vulture --exclude .eggs --min-confidence 90 .
 
 test:
-	docker run -v ${CURDIR}:/apps registry.ubicast.net/docker/pytest:latest make test_local
+	${DOCKER_RUN} registry.ubicast.net/docker/pytest:latest make test_local
 
 test_local:
 	pytest tests/ -vv --color=yes --log-level=DEBUG --cov=ms_client ${PYTEST_ARGS}
 
-build: clean
-	python setup.py sdist bdist_wheel
+publish:
+	make clean
+	@mkdir -p .local
+	${DOCKER_RUN} \
+		-e "TWINE_USERNAME=${TWINE_USERNAME}" \
+		-e "TWINE_PASSWORD=${TWINE_PASSWORD}" \
+		-v ${PWD}/.local:/.local \
+		registry.ubicast.net/docker/pytest:latest make publish_local
 
-install: build
-	pip install -I dist/*.whl
-
-publish_dry: build
-	twine check dist/*.{whl,tar.gz}
-	twine upload -r testubicast --skip-existing dist/*.{whl,tar.gz}
-
-publish: build
-	twine check dist/*.{whl,tar.gz}
-	twine upload -r ubicast --skip-existing dist/*.{whl,tar.gz}
+publish_local:
+	test -z "${TWINE_USERNAME}" \
+		&& $echo 'You have to define a value for "TWINE_USERNAME" in your environment' \
+		&& exit 1 || true
+	test -z "${TWINE_PASSWORD}" \
+		&& echo 'You have to define a value for "TWINE_PASSWORD" in your environment' \
+		&& exit 1 || true
+	pip install build twine
+	python -m build
+	python -m twine upload --repository pypi -u "${TWINE_USERNAME}" -p "${TWINE_PASSWORD}" dist/*
 
 clean:
-	rm -rf .eggs/ build/ dist/ *.egg-info/
+	rm -rf .coverage .pytest_cache .local .eggs build dist *.egg-info
 	find . -type f -name *.pyc -delete
 	find . -type d -name __pycache__ -delete
