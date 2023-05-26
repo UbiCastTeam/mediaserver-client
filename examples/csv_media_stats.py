@@ -161,7 +161,7 @@ class Stats:
 
                     hardware_duration.setdefault(serial, 0)
                     hardware_duration[serial] += duration_seconds
-                elif origin == 'Manual (form: AddMediaWithFileForm)':
+                elif origin in ['Manual (form: AddMediaWithFileForm)', 'Manual (form: AddVODByUploadForm)']:
                     mtype = 'upload'
                 elif origin == 'Manual (form: AddVODWithEmbedForm)':
                     mtype = 'embed'
@@ -175,7 +175,9 @@ class Stats:
                     #webstudio_linux_chromium_102
                     mtype = 'webstudio'
                     #ws, os, browser, browser_ver = origin.split('_')
-                elif origin.startswith('zoom-') or origin.startswith('msteams-'):
+                elif origin.startswith('zoom-') \
+                        or origin.startswith('msteams-') \
+                        or origin in ['teams', 'microsoft_teams']:
                     mtype = 'videoconferencing'
                 elif origin == 'nudgis-obs-plugin':
                     mtype = 'obs'
