@@ -15,7 +15,7 @@ if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
         '--conf',
@@ -26,9 +26,17 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--csv',
-        help='Path to CSV file; the first column is expected to be the OID. Lines starting with "#" will be ignored',
+        help='Path to CSV file; the column expceted to be the OID \
+                is defined by the --column option. Lines starting with "#" will be ignored',
         required=True,
         type=str
+    )
+
+    parser.add_argument(
+        '--column',
+        help='Column count where the oid should be expected',
+        default=0,
+        type=int
     )
 
     parser.add_argument(
@@ -54,7 +62,7 @@ if __name__ == '__main__':
         # there is a limit to how many subprocesses can be launched
 
         for index, line in enumerate(lines):
-            oid = line.split(args.csv_separator)[0]
+            oid = line.split(args.csv_separator)[args.column]
             if oid:
                 params = {'oid': oid, 'full': 'yes'}
                 try:
