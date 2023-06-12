@@ -8,7 +8,7 @@ import os
 import sys
 
 
-def transcode_all_videos(msc):
+def regen_redirections_file(msc):
     more = True
     start = ''
     redir_count = 0
@@ -49,4 +49,4 @@ if __name__ == '__main__':
     msc = MediaServerClient(local_conf)
     msc.check_server()
 
-    transcode_all_videos(msc)
+    regen_redirections_file(msc)
