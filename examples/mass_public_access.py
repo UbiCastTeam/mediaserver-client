@@ -69,6 +69,12 @@ if __name__ == '__main__':
                     print(f'[{index+1}/{total_lines}] About to set {oid} public')
                     data = {
                         'oid': oid,
+                        'validated': 'yes'
+                    }
+                    print(f'Validating {oid}')
+                    msc.api('medias/edit/', method='post', data=data)
+                    data = {
+                        'oid': oid,
                         'users-anonymous-can_access_media': 'True',
                         'users-authenticated-can_access_media': 'True',
                         'prefix': 'reference',
