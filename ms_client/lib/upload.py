@@ -6,6 +6,7 @@ from pathlib import Path
 import logging
 import math
 import time
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,9 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None,
     """
     Function to send a file using the chunked upload.
     """
+    if remote_path and not re.match(r'^[A-Za-z0-9_-]{10,50}/.+$', remote_path):
+        raise ValueError('Invalid "remote_path" argument value.')
+
     max_retry = client.get_max_retry(max_retry)
     url_prefix = 'medias/resource/' if client.get_server_version() < (8, 2) else ''
     file_path = Path(file_path)
@@ -133,14 +137,15 @@ def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None,
     The directory containing ts files must have the same name as the m3u8 file.
     """
     if client.get_server_version() < (8, 2):
-        raise Exception('The MediaServer version does not support HLS upload.')
+        raise RuntimeError('The MediaServer version does not support HLS upload.')
     m3u8_path = Path(m3u8_path)
     if not m3u8_path.is_file():
         raise ValueError(f'The given m3u8 file "{m3u8_path}" does not exist.')
     ts_dir = m3u8_path.parent / m3u8_path.name.strip('.').rsplit('.', 1)[0]
     if not ts_dir.is_dir():
         raise ValueError(f'The ts directory "{ts_dir}" of the m3u8 file "{m3u8_path}" does not exist.')
-    remote_dir = remote_dir.strip(' \t\n\r/\\')
+    if remote_dir and not re.match(r'^[A-Za-z0-9_-]{10,50}$', remote_dir):
+        raise ValueError('Invalid "remote_dir" argument value.')
 
     # Get configuration
     max_size = client.conf['UPLOAD_CHUNK_SIZE']
