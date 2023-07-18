@@ -20,14 +20,14 @@ logger = logging.getLogger('upload_speed_test')
 
 def upload_hls_files(msc, uid, tmp_path):
     logger.info(f'Starting HLS upload (#{uid}).')
-    msc.hls_upload(tmp_path + '.m3u8', f'rtest-{uid}')
+    msc.hls_upload(tmp_path + '.m3u8', f'speed-test-{uid}')
 
 
 def upload_chunked_files(msc, uid, files_list):
     logger.info(f'Starting chunked upload (#{uid}).')
     for i, path in enumerate(files_list):
         logger.info(f'Process #{uid}, file {i + 1}/{len(files_list)}')
-        msc.chunked_upload(file_path=path, remote_path=f'rtest-{uid}/' + os.path.basename(path))
+        msc.chunked_upload(file_path=path, remote_path=f'speed-test-{uid}/' + os.path.basename(path))
 
 
 def strict_positive_int_type(value):
