@@ -92,7 +92,7 @@ def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=Fal
                             msc.api(
                                 'medias/delete/',
                                 method='post',
-                                data=dict(oid=item['oid'], delete_metadata='yes', delete_resources='yes')
+                                data=dict(oid=item['oid'], delete_metadata='yes', delete_resources='yes', force='yes')
                             )
                         except Exception as e:
                             print('Failed to delete media %s: %s' % (get_repr(item), e))
