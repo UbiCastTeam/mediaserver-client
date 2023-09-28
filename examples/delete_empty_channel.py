@@ -11,7 +11,7 @@ python3 examples/delete_empty_channel.py --conf conf.json --max-add-date YYYY-MM
 
 import argparse
 from datetime import date, datetime
-import os
+from pathlib import Path
 import sys
 
 
@@ -21,7 +21,6 @@ def empty_channel_iterator(
     max_date=date.today(),
     min_depth=0,
 ):
-
     for channel in channel_info.get('channels', ()):
         channel['path'] = list(channel_info.get('path', [])) + [channel['title']]
         skip_channel = (
@@ -88,8 +87,8 @@ def delete_empty_channels(msc, channel_oid_blacklist, max_date, min_depth, dry_r
                 print(f'[Dry run] Empty channel {ms_url}{item} will be deleted')
 
 
-if __name__ == '__main__':
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+def main():
+    sys.path.append(str(Path(__file__).resolve().parent.parent))
     from ms_client.client import MediaServerClient
 
     parser = argparse.ArgumentParser(description=__doc__.strip())
@@ -139,17 +138,17 @@ if __name__ == '__main__':
     print(f'Minimum depth: {args.min_depth}')
     print(f'Enable dry run: {args.dry_run}')
 
-    #Check if configuration file exists
-    if not args.configuration.startswith('unix:') and not os.path.exists(args.configuration):
+    # Check if configuration file exists
+    if not args.configuration.startswith('unix:') and not Path(args.configuration).exists():
         print('Invalid path for configuration file.')
-        sys.exit(1)
+        return 1
 
     # Check date format
     try:
         max_date = datetime.strptime(str(args.max_date), '%Y-%m-%d').date()
     except ValueError:
         print('Incorrect data format, should be "YYYY-MM-DD".')
-        sys.exit(1)
+        return 1
 
     msc = MediaServerClient(args.configuration)
     msc.check_server()
@@ -165,8 +164,13 @@ if __name__ == '__main__':
                     f'Please enter valid channel oid {oid_blacklist} or check access permissions.'
                     f'Error when trying to get channel was: {e}'
                 )
-                sys.exit(1)
+                return 1
     else:
         args.exclude_oid = []
-    rc = delete_empty_channels(msc, args.exclude_oid, max_date, args.min_depth, args.dry_run)
+    delete_empty_channels(msc, args.exclude_oid, max_date, args.min_depth, args.dry_run)
+    return 0
+
+
+if __name__ == '__main__':
+    rc = main()
     sys.exit(rc)
