@@ -1,13 +1,7 @@
 from datetime import date
 from itertools import count
-import os
-import sys
-from unittest.mock import MagicMock
 
 import pytest
-
-from delete_empty_channel import empty_channel_iterator, delete_empty_channels
-
 
 counter = count()
 
@@ -25,9 +19,8 @@ def api_client(channel_tree):
         if url == 'catalog/get-all/':
             return channel_tree
 
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
-    client = MagicMock(spec=MediaServerClient)
+    client = MediaServerClient()
     client.api = mock_api_call
     return client
 
@@ -200,10 +193,13 @@ def channel_tree():
         'and some are excluded and channel depth < min_depth'),
 ])
 def test_empty_channel_iterator(channel_tree, blacklist, max_date, min_depth, expected_result):
-    oids = {channel['oid'] for channel in empty_channel_iterator(channel_tree,
-                                                                 channel_oid_blacklist=blacklist,
-                                                                 min_depth=min_depth,
-                                                                 max_date=max_date)}
+    from examples.delete_empty_channel import empty_channel_iterator
+    oids = {channel['oid'] for channel in empty_channel_iterator(
+        channel_tree,
+        channel_oid_blacklist=blacklist,
+        min_depth=min_depth,
+        max_date=max_date
+    )}
     assert oids == expected_result
 
 
@@ -264,17 +260,22 @@ def _get_oids(tree):
             'c0003rdlevelempty', 'c0003rdlevelempty2',
         }, id='Channel depth >= min_depth but channel date is after max_date'),
 ])
-def test_delete_empty_channels(api_client,
-                               channel_tree,
-                               blacklist,
-                               max_date,
-                               min_depth,
-                               dry_run,
-                               expected_deleted):
+def test_delete_empty_channels(
+    api_client,
+    channel_tree,
+    blacklist,
+    max_date,
+    min_depth,
+    dry_run,
+    expected_deleted
+):
+    from examples.delete_empty_channel import delete_empty_channels
     initial_oids = set(_get_oids(channel_tree))
-    delete_empty_channels(api_client,
-                          channel_oid_blacklist=blacklist,
-                          max_date=max_date,
-                          min_depth=min_depth,
-                          dry_run=dry_run)
+    delete_empty_channels(
+        api_client,
+        channel_oid_blacklist=blacklist,
+        max_date=max_date,
+        min_depth=min_depth,
+        dry_run=dry_run
+    )
     assert initial_oids - set(_get_oids(channel_tree)) == expected_deleted
