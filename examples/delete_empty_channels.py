@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 '''
-Script to delete empty channel from Nudgis.
+Script to delete empty channels from Nudgis.
 
 To use this script clone MediaServer client, configure it and run this file.
 
 git clone https://github.com/UbiCastTeam/mediaserver-client
 cd mediaserver-client
-python3 examples/delete_empty_channel.py --conf conf.json --max-add-date YYYY-MM-DD --exclude channel_oid --dry-run
+python3 examples/delete_empty_channels.py --conf conf.json --max-add-date YYYY-MM-DD --exclude channel_oid --dry-run
 '''
 
 import argparse
@@ -15,7 +15,7 @@ from pathlib import Path
 import sys
 
 
-def empty_channel_iterator(
+def empty_channels_iterator(
     channel_info,
     channel_oid_blacklist=(),
     max_date=date.today(),
@@ -35,7 +35,7 @@ def empty_channel_iterator(
         if not skip_channel:
             yield channel
         if channel['oid'] not in channel_oid_blacklist:
-            yield from empty_channel_iterator(
+            yield from empty_channels_iterator(
                 channel,
                 channel_oid_blacklist=channel_oid_blacklist,
                 max_date=max_date,
@@ -57,20 +57,20 @@ def delete_empty_channels(msc, channel_oid_blacklist, max_date, min_depth, dry_r
     ms_url = msc.conf['SERVER_URL'] + '/permalink/'
 
     while True:
-        empty_channel_oids = [channel['oid'] for channel in empty_channel_iterator(
+        empty_channels_oids = [channel['oid'] for channel in empty_channels_iterator(
             tree,
             channel_oid_blacklist=channel_oid_blacklist,
             max_date=max_date,
             min_depth=min_depth,
         )]
-        if not empty_channel_oids:
+        if not empty_channels_oids:
             break
-        deleted_oids = set(empty_channel_oids)
+        deleted_oids = set(empty_channels_oids)
         if not dry_run:
             response = msc.api(
                 'catalog/bulk_delete/',
                 method='post',
-                data=dict(oids=empty_channel_oids)
+                data=dict(oids=empty_channels_oids)
             )
             deleted_oids = {
                 oid

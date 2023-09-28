@@ -192,9 +192,9 @@ def channel_tree():
         id='Empty but channel date is after max_date'
         'and some are excluded and channel depth < min_depth'),
 ])
-def test_empty_channel_iterator(channel_tree, blacklist, max_date, min_depth, expected_result):
-    from examples.delete_empty_channel import empty_channel_iterator
-    oids = {channel['oid'] for channel in empty_channel_iterator(
+def test_empty_channels_iterator(channel_tree, blacklist, max_date, min_depth, expected_result):
+    from examples.delete_empty_channels import empty_channels_iterator
+    oids = {channel['oid'] for channel in empty_channels_iterator(
         channel_tree,
         channel_oid_blacklist=blacklist,
         min_depth=min_depth,
@@ -269,7 +269,7 @@ def test_delete_empty_channels(
     dry_run,
     expected_deleted
 ):
-    from examples.delete_empty_channel import delete_empty_channels
+    from examples.delete_empty_channels import delete_empty_channels
     initial_oids = set(_get_oids(channel_tree))
     delete_empty_channels(
         api_client,
