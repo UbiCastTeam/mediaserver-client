@@ -18,7 +18,7 @@ deadcode_local:
 	vulture --exclude .eggs --min-confidence 90 .
 
 test:
-	${DOCKER_RUN} registry.ubicast.net/docker/pytest:latest make test_local
+	${DOCKER_RUN} -e "PYTEST_ARGS=${PYTEST_ARGS}" registry.ubicast.net/docker/pytest:latest make test_local
 
 test_local:
 	pytest tests/ -vv --color=yes --log-level=DEBUG --cov=ms_client ${PYTEST_ARGS}
