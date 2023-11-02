@@ -11,7 +11,7 @@ def generate_csv(msc, csv_path):
     with open(csv_path, "w") as f:
         print("Fetching catalog")
         catalog_csv = msc.api(
-            "catalog/get-all/", params={"format": "csv"}, parse_json=False
+            "catalog/get-all/", params={"format": "csv"}, parse_json=False, timeout=30,
         )
         print(f"Writing {csv_path}")
         f.write(catalog_csv)
