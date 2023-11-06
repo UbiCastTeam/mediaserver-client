@@ -209,12 +209,12 @@ def _get_oids(tree):
         yield from _get_oids(channel)
 
 
-@pytest.mark.parametrize('blacklist, max_date, min_depth, dry_run, expected_deleted', [
+@pytest.mark.parametrize('blacklist, max_date, min_depth, apply, expected_deleted', [
     pytest.param(
         (),
         date.today(),
         0,
-        False,
+        True,
         {
             # c0001stlevelempty is 403 on delete
             'c0002ndlevelempty', 'c0003rdlevelempty', 'c0003rdlevelempty2',
@@ -227,7 +227,7 @@ def _get_oids(tree):
         ['c0003rdlevelempty', 'c0003rdlevelempty2', 'c0005thlevelemptysubchannel'],
         date.today(),
         0,
-        False,
+        True,
         {
             'c0002ndlevelempty', 'c0004thlevelempty', 'c0005thlevelempty',
         },
@@ -236,7 +236,7 @@ def _get_oids(tree):
         (),
         date(2023, 1, 1),
         0,
-        False,
+        True,
         {
             'c0002ndlevelempty', 'c0003rdlevelempty', 'c0003rdlevelempty2',
         },
@@ -245,7 +245,7 @@ def _get_oids(tree):
         (),
         date.today(),
         3,
-        False,
+        True,
         {
             'c0003rdlevelempty', 'c0003rdlevelempty2', 'c0003rdlevelfull2sub',
             'c0004thlevelempty', 'c0004thlevelfull3sub',
@@ -255,7 +255,7 @@ def _get_oids(tree):
         (),
         date(2023, 1, 1),
         3,
-        False,
+        True,
         {
             'c0003rdlevelempty', 'c0003rdlevelempty2',
         }, id='Channel depth >= min_depth but channel date is after max_date'),
@@ -266,7 +266,7 @@ def test_delete_empty_channels(
     blacklist,
     max_date,
     min_depth,
-    dry_run,
+    apply,
     expected_deleted
 ):
     from examples.delete_empty_channels import delete_empty_channels
@@ -276,6 +276,6 @@ def test_delete_empty_channels(
         channel_oid_blacklist=blacklist,
         max_date=max_date,
         min_depth=min_depth,
-        dry_run=dry_run
+        apply=apply
     )
     assert initial_oids - set(_get_oids(channel_tree)) == expected_deleted
