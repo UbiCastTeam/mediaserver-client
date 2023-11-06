@@ -6,7 +6,7 @@ To use this script clone MediaServer client, configure it and run this file.
 
 git clone https://github.com/UbiCastTeam/mediaserver-client
 cd mediaserver-client
-python3 examples/delete_empty_channels.py --conf conf.json --max-add-date YYYY-MM-DD --exclude channel_oid --dry-run
+python3 examples/delete_empty_channels.py --conf conf.json --max-add-date YYYY-MM-DD --exclude channel_oid
 '''
 
 import argparse
@@ -51,7 +51,7 @@ def clean_tree(tree, deleted_oids):
             clean_tree(channel, deleted_oids)
 
 
-def delete_empty_channels(msc, channel_oid_blacklist, max_date, min_depth, dry_run=False):
+def delete_empty_channels(msc, channel_oid_blacklist, max_date, min_depth, apply=False):
     tree = msc.api('catalog/get-all/')
     channel_oid_blacklist = list(channel_oid_blacklist)
     ms_url = msc.conf['SERVER_URL'] + '/permalink/'
@@ -66,7 +66,7 @@ def delete_empty_channels(msc, channel_oid_blacklist, max_date, min_depth, dry_r
         if not empty_channels_oids:
             break
         deleted_oids = set(empty_channels_oids)
-        if not dry_run:
+        if apply:
             response = msc.api(
                 'catalog/bulk_delete/',
                 method='post',
@@ -82,7 +82,7 @@ def delete_empty_channels(msc, channel_oid_blacklist, max_date, min_depth, dry_r
             if not deleted_oids:
                 break
         clean_tree(tree, deleted_oids)
-        if dry_run:
+        if not apply:
             for item in deleted_oids:
                 print(f'[Dry run] Empty channel {ms_url}{item} will be deleted')
 
@@ -100,11 +100,10 @@ def main():
         type=str)
 
     parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        default=False,
-        dest='dry_run',
-        help='Enable dry mode, nothing will be deleted in dry run mode.')
+        "--apply",
+        help="Whether to apply changes or not",
+        action="store_true",
+    )
 
     parser.add_argument(
         '--exclude',
@@ -136,7 +135,7 @@ def main():
     print(f'Date limit: {args.max_date}')
     print(f'Blacklist channel: {args.exclude_oid}')
     print(f'Minimum depth: {args.min_depth}')
-    print(f'Enable dry run: {args.dry_run}')
+    print(f'Apply changes: {args.apply}')
 
     # Check if configuration file exists
     if not args.configuration.startswith('unix:') and not Path(args.configuration).exists():
@@ -167,7 +166,7 @@ def main():
                 return 1
     else:
         args.exclude_oid = []
-    delete_empty_channels(msc, args.exclude_oid, max_date, args.min_depth, args.dry_run)
+    delete_empty_channels(msc, args.exclude_oid, max_date, args.min_depth, args.apply)
     return 0
 
 
