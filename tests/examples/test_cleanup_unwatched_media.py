@@ -18,7 +18,7 @@ def api_client(unwatched_tree, all_resources):
             oid = kwargs["params"]["oid"]
             return {"resources": all_resources.get(oid, {})}
         elif url == "/medias/resources-delete/":
-            oid = kwargs["vods"]["oid"]
+            oid = kwargs["data"]["oid"]
             if oid in all_resources.keys():
                 return {
                     "success": True,

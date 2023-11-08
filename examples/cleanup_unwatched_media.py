@@ -108,7 +108,7 @@ def delete_hls_resources(
             if apply:
                 print(f"Deleting resources of oid {oid}: {files}")
                 params = {"oid": oid, "names": ",".join(files)}
-                r = msc.api("/medias/resources-delete/", method="post", vods=params)
+                r = msc.api("/medias/resources-delete/", method="post", data=params)
                 if not r["success"]:
                     print(f"Error when deleting {oid}: {r['message']}")
                 else:
