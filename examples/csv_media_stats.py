@@ -4,7 +4,7 @@ import csv
 import logging
 import sys
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 csv.field_size_limit(sys.maxsize)  # support huge fields
 
@@ -84,10 +84,51 @@ logger = logging.getLogger("csv-media-stats")
 class Stats:
     def __init__(self, options):
         self.options = options
+        self.recordings_per_day = dict()
         self.parse_options()
         self.skipped = 0
         self.read_csv()
         self.display_stats()
+        if self.options["compute_max_parallel_recordings"]:
+            self.compute_max_parallel_recordings()
+
+    def compute_max_parallel_recordings(self):
+        max_parallel = 0
+        max_date = max_machines = None
+        processed = 0
+        total_media = sum([len(t) for t in self.recordings_per_day.values()])
+        days_sorted = sorted(self.recordings_per_day.keys())
+        for day in days_sorted:
+            recordings_per_day = self.recordings_per_day[day]
+            sorted_recordings = sorted(recordings_per_day)
+            while len(sorted_recordings):
+                cursor, cursor_end, origin = sorted_recordings.pop(0)
+                machines = [self.get_recorder_serial(origin)]
+                processed += 1
+                parallel = 1
+                print(
+                    f"[{processed}/{total_media}] {cursor} ({len(recordings_per_day)} media the same day)"
+                )
+                while cursor <= cursor_end:
+                    for start, end, origin in sorted_recordings:
+                        machine = self.get_recorder_serial(origin)
+                        if cursor >= start and cursor <= end:
+                            if (
+                                machine not in machines
+                            ):  # we do not want to count trimmings from the same machine
+                                parallel += 1
+                                machines.append(machine)
+                    cursor += timedelta(seconds=1)
+                    if parallel > max_parallel:
+                        max_parallel = parallel
+                        max_date = cursor
+                        max_machines = machines
+        print(
+            f"Reached {max_parallel} parallel recordings on {max_date}: {max_machines}"
+        )
+
+    def get_recorder_serial(self, origin):
+        return origin.split("_")[0]
 
     def parse_options(self):
         for key in ["start_date", "end_date"]:
@@ -124,6 +165,12 @@ class Stats:
             logging.debug(f"Skipping {row} because it was created after the end date")
             return
 
+        end_time = creation + timedelta(seconds=int(row["duration_s"]))
+        origin = row["origin"]
+        if origin.startswith("miris-box") or origin.startswith("easycast-"):
+            day_code = f"{creation.year}-{creation.month}-{creation.day}"
+            self.recordings_per_day.setdefault(day_code, [])
+            self.recordings_per_day[day_code].append([creation, end_time, origin])
         return row
 
     def display_stats(self):
@@ -262,6 +309,12 @@ if __name__ == "__main__":
         "--end-date",
         type=str,
         help='Only keep media created before this date, e.g. "2022-01-31"',
+    )
+
+    parser.add_argument(
+        "--compute-max-parallel-recordings",
+        help="Compute how many recorders have recorded in parallel",
+        action="store_true",
     )
 
     args = parser.parse_args()
