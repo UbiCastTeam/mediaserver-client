@@ -146,7 +146,7 @@ def delete_unwatched_vods(
             trashed_files_log_path = f"{time.strftime('%Y%m%d-%H%M%S')}-trashed.csv"
             print(f"Will put {media_to_delete_count} VODs to trash")
             deleted_statuses = msc.api(
-                "/catalog/bulk_delete/", method="post", vods={"oids": oids}
+                "/catalog/bulk_delete/", method="post", data={"oids": oids}
             )["statuses"]
 
             trashed_media_count = 0

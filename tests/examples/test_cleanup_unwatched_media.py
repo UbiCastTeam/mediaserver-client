@@ -10,7 +10,7 @@ def api_client(unwatched_tree, all_resources):
     def mock_api_call(url, **kwargs):
         if url == "/catalog/bulk_delete/":
             return {
-                "statuses": {oid: {"status": 200} for oid in kwargs["vods"]["oids"]}
+                "statuses": {oid: {"status": 200} for oid in kwargs["data"]["oids"]}
             }
         elif url == "/stats/unwatched/":
             return unwatched_tree
