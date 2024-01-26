@@ -46,4 +46,10 @@ BASE_CONF = {
 
     # Maximum number of files per request
     'UPLOAD_MAX_FILES': 100,
+
+    # External SMTP server config
+    'SMTP_SERVER': None,
+    'SMTP_LOGIN': None,
+    'SMTP_PASSWORD': None,
+    'SMTP_SENDER_EMAIL': None,
 }
