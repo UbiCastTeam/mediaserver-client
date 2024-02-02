@@ -21,7 +21,7 @@ test:
 	${DOCKER_RUN} -e "PYTEST_ARGS=${PYTEST_ARGS}" registry.ubicast.net/docker/pytest:latest make test_local
 
 test_local:
-	pytest tests/ -vv --color=yes --log-level=DEBUG --cov=ms_client ${PYTEST_ARGS}
+	pytest tests/ -vv --color=yes --log-level=DEBUG --cov=ms_client --cov=examples --no-cov-on-fail ${PYTEST_ARGS}
 
 publish:
 	make clean
