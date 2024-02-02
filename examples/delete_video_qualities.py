@@ -154,7 +154,7 @@ def process_csv_file(msc, qualities_to_delete, formats_to_delete, csv_file, enab
                 print('-- Media %s ignored:' % video_oid)
                 print('Failed to get title of media: %s' % str(e).strip())
             else:
-                remove_resources(msc, video_oid, video_title, qualities_to_delete, enable_delete)
+                remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete)
 
 
 def check_resources(msc, qualities_to_delete, formats_to_delete, channel_oid, csv_file, enable_delete=False):
