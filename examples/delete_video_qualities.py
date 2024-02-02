@@ -55,7 +55,7 @@ def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_
     filtered_resources = list()
     for res in resources:
         if (
-            (' local ' in res['manager'] or ' object ' in res['manager'])
+            (res.get('manager') or {}).get('service') in ('local', 'object')
             and res['format'] not in ('embed', 'youtube')
         ):
             if formats_to_delete:
@@ -230,6 +230,7 @@ if __name__ == '__main__':
         '--formats',
         dest='formats',
         help='File extensions to delete. Format is for example "mp4,aspx". '
+             'If no value is specified, all formats will be targetted. '
              'The reference mp4 or mp3 file is never deleted.',
         default='',
         type=str)
@@ -274,7 +275,7 @@ if __name__ == '__main__':
     rc = check_resources(
         msc,
         args.qualities,
-        args.formats.split(','),
+        args.formats.split(',') if args.formats else None,
         args.channel_oid,
         args.csv_file,
         args.enable_delete)
