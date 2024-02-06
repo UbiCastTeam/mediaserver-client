@@ -30,7 +30,7 @@ def transcode_all_videos(msc):
             print('// Media %s: %s' % (index, item['oid']))
             try:
                 # behavior: action to do on existing resources
-                msc.api('medias/task/', method='post', data=dict(
+                msc.api('tasks/start/', method='post', data=dict(
                     oid=item['oid'],
                     task='transcoding',
                     params=json.dumps(dict(priority='low', behavior='delete'))
