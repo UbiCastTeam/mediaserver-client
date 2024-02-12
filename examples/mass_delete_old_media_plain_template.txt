@@ -1,0 +1,4 @@
+The following {media_count} medias (total {media_size_pp}) hosted on the video platform {platform_hostname} should be deleted according to the University policy. You have until {delete_date} to review each media below and set the "{skip_category}" category if you need to preserve this content. After this date, the media will be deleted. You can also delete it when you review it.
+
+List of media to review ({media_count}):
+{list_of_media}
