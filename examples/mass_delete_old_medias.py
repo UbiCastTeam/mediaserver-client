@@ -9,7 +9,7 @@ their medias by applying a category to them.
 
 import argparse
 from contextlib import nullcontext
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from itertools import zip_longest
@@ -56,6 +56,7 @@ DUMMY_MEDIAS = [
     {
         'oid': 'oid_1',
         'title': 'Media #1',
+        'add_date': '2024-01-25 12:00:00',
         'storage_used': 10 * 1000 ** 3,  # 10 GB
         'views_last_year': 10,
         'views_last_month': 1,
@@ -63,6 +64,7 @@ DUMMY_MEDIAS = [
     {
         'oid': 'oid_2',
         'title': 'Media #2',
+        'add_date': '2023-04-25 12:00:00',
         'storage_used': 20 * 1000 ** 3,  # 20 GB
         'views_last_year': 20,
         'views_last_month': 2,
@@ -70,6 +72,7 @@ DUMMY_MEDIAS = [
     {
         'oid': 'oid_3',
         'title': 'Media #3',
+        'add_date': '2020-04-25 12:00:00',
         'storage_used': 30 * 1000 ** 3,  # 30 GB
         'views_last_year': 30,
         'views_last_month': 3,
@@ -81,7 +84,7 @@ class MisconfiguredError(Exception):
     pass
 
 
-def pp_size(size_bytes: int) -> str:
+def format_size(size_bytes: int) -> str:
     """
     Return human-readable size with automatic suffix.
     """
@@ -90,6 +93,19 @@ def pp_size(size_bytes: int) -> str:
             return f'{size_bytes:.1f}{unit}B'
         size_bytes /= 1000
     return f'{size_bytes:.1f}YB'
+
+
+def format_timedelta(delta: timedelta):
+    if delta.days < 30:
+        return f'{delta.days} days'
+
+    years, days = divmod(delta.days, 365)
+    months, days = divmod(days, 30)
+    if years and months:
+        return f'{years} years, {months} months'
+    elif years:
+        return f'{years} years'
+    return f'{months} months'
 
 
 def _get_old_medias(
@@ -122,7 +138,7 @@ def _get_old_medias(
     storage_used = sum(media['storage_used'] for media in old_medias)
     logger.info(
         f'Found {len(old_medias)} medias added before {before_date.strftime("%Y-%m-%d")} '
-        f'(size: {pp_size(storage_used)}).'
+        f'(size: {format_size(storage_used)}).'
     )
     return old_medias
 
@@ -153,10 +169,10 @@ def _prepare_mail(
     medias = list({media['oid']: media for media in medias}.values())
 
     ms_perma_url = msc.conf['SERVER_URL'] + '/permalink/'
-    ms_edit_url = msc.conf['SERVER_URL'] + '/edit/'
+    ms_edit_url = msc.conf['SERVER_URL'] + '/edit/iframe/'
     context = {
         'media_count': len(medias),
-        'media_size_pp': pp_size(sum(media['storage_used'] for media in medias)),
+        'media_size_pp': format_size(sum(media['storage_used'] for media in medias)),
         'delete_date': delete_date.strftime('%B %d, %Y'),
         'skip_category': skip_category,
         'platform_hostname': urlparse(msc.conf['SERVER_URL']).netloc,
@@ -166,25 +182,38 @@ def _prepare_mail(
     message['From'] = sender
     message['To'] = speaker_email
 
+    media_contexts = []
+    now = datetime.now()
+    for media in medias:
+        media_add_date = datetime.strptime(media['add_date'], '%Y-%m-%d %H:%M:%S')
+        media_contexts.append({
+            'title': media['title'],
+            'vly': str(media['views_last_year']),
+            'vlm': str(media['views_last_month']),
+            'add_date': media_add_date.strftime('%Y-%m-%d'),
+            'age': format_timedelta(now - media_add_date),
+            'view_url': f'{ms_perma_url}{media["oid"]}/iframe/',
+            'edit_url': f'{ms_edit_url}{media["oid"]}/#id_categories',
+        })
     if plain_template:
         plain_media_list = '\n'.join(
-            f'\t- {ms_perma_url}{media["oid"]}/ - "{media["title"]}" - '
-            f'viewed {media["views_last_year"]} times last year, '
-            f'{media["views_last_month"]} times last month '
-            f'(click here {ms_edit_url}{media["oid"]}/#id_categories '
-            f'to protect against deletion)'
-            for media in medias
+            (
+                '\t- {view_url} - "{title}" - added on {add_date} ({age} ago), '
+                'viewed {vly} times last year, {vlm} times last month '
+                '(click here {edit_url} to protect against deletion)'
+            ).format(**ctx)
+            for ctx in media_contexts
         )
         plain = plain_template.format(list_of_media=plain_media_list, **context)
         message.attach(MIMEText(plain, 'plain'))
     if html_template:
         html_media_list = '\n'.join(
-            f'<li><a href="{ms_perma_url}{media["oid"]}/">"{media["title"]}"</a> '
-            f'viewed {media["views_last_year"]} times last year, '
-            f'{media["views_last_month"]} times last month '
-            f'(click <a href="{ms_edit_url}{media["oid"]}/#id_categories">here</a> '
-            f'to protect against deletion)</li>'
-            for media in medias
+            (
+                '<li><a href="{view_url}">"{title}"</a> added on {add_date} ({age} ago), '
+                'viewed {vly} times last year, {vlm} times last month '
+                '(click <a href="{edit_url}">here</a> to protect against deletion)</li>'
+            ).format(**ctx)
+            for ctx in media_contexts
         )
         html = html_template.format(list_of_media=html_media_list, **context)
         message.attach(MIMEText(html, 'html'))
@@ -277,7 +306,7 @@ def _warn_speakers_about_upcoming_deletion(
             for speaker_email in (media.get('speaker_email') or '').split('|')
         ]
         for speaker_id, speaker_email in zip_longest(speakers_ids, speakers_emails):
-            if not speaker_email and speaker_id:
+            if (not speaker_email or speaker_email not in valid_emails) and speaker_id:
                 speaker_email = emails_by_speaker_id[speaker_id]
             if speaker_email and speaker_email in valid_emails:
                 recipients.append(speaker_email)
@@ -384,7 +413,7 @@ def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = Fal
                     f'The media has not been deleted: {err}.'
                 )
         logger.info(
-            f'{deleted_count} medias ({pp_size(deleted_size)}) have been successfully deleted.'
+            f'{deleted_count} medias ({format_size(deleted_size)}) have been successfully deleted.'
         )
     else:
         for oid, media in medias.items():
@@ -392,7 +421,7 @@ def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = Fal
             deleted_count += 1
             deleted_size += media['storage_used']
         logger.info(
-            f'[Dry run] {deleted_count} medias ({pp_size(deleted_size)}) would have been have been deleted.'
+            f'[Dry run] {deleted_count} medias ({format_size(deleted_size)}) would have been have been deleted.'
         )
 
 
