@@ -8,13 +8,13 @@ import sys
 
 
 def generate_csv(msc, csv_path):
-    with open(csv_path, "w") as f:
+    with open(csv_path, "wb") as f:
         print("Fetching catalog")
         catalog_csv = msc.api(
             "catalog/get-all/", params={"format": "csv"}, parse_json=False, timeout=30,
         )
         print(f"Writing {csv_path}")
-        f.write(catalog_csv)
+        f.write(catalog_csv.encode('utf8'))
 
 
 if __name__ == "__main__":
