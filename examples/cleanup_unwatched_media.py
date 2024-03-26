@@ -213,7 +213,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--max-views",
-        help="Number of views over the period to consider unwatched [UNIMPLEMENTED]",
+        help="Number of views over the period to consider unwatched",
         required=False,
         type=int,
         default=0,
@@ -238,6 +238,8 @@ if __name__ == "__main__":
     if args.channel_oid:
         params["oid"] = args.channel_oid
         params["recursive"] = "yes"
+
+    params["views_threshold"] = args.max_views
 
     vods = query_deletable_unwatched_vods(msc, params)
 
