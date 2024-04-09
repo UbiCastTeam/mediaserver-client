@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 '''
-Script to ping a MediaServer.
+Script to print annotations of a media into the standard output
+in order to export it
 '''
 import os
 import sys
