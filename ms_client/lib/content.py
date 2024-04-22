@@ -5,6 +5,7 @@ This module is not intended to be used directly, only the client class should be
 import logging
 import zipfile
 from pathlib import Path
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -104,3 +105,36 @@ def remove_all_content(client, timeout=None, max_retry=None):
             )
             logger.info('Emptied channel %s', c_oid)
         channels = client.api('channels/tree/')['channels']
+
+
+def get_catalog(client, fmt=Literal['flat', 'tree', 'csv']):
+    version = client.get_server_version()
+    if version[0] >= 12 and version[1] >= 3:
+        as_tree = (fmt == 'tree')
+        api_fmt = 'csv' if fmt == 'csv' else 'json'
+        catalog = client.api(
+            'catalog/get-all/',
+            params={'format': api_fmt},
+            parse_json=(api_fmt == 'json'),
+            timeout=120,
+        )
+        if as_tree:
+            channels = {channel['oid']: channel for channel in catalog['channels']}
+            tree = {'channels': []}
+            for model_type, objects in catalog.items():
+                for obj in objects:
+                    parent_oid = obj['parent_oid']
+                    if model_type == 'channels' and parent_oid is None:
+                        tree['channels'].append(obj)
+                    else:
+                        channels[parent_oid].setdefault(model_type, []).append(obj)
+            return tree
+        else:
+            return catalog
+    else:
+        client.api(
+            'catalog/get-all/',
+            params={'format': fmt},
+            parse_json=(fmt != 'csv'),
+            timeout=120,
+        )

@@ -19,7 +19,7 @@ import sys
 def transcode_all_videos(msc, purge):
     non_transcodable = failed = succeeded = 0
 
-    videos = msc.api('catalog/get-all/', params={'format': 'flat'}).get(
+    videos = msc.get_catalog(fmt='flat').get(
         'videos', list()
     )
     videos_count = len(videos)

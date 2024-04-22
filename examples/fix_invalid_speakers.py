@@ -83,7 +83,7 @@ class CSVSpeakerData:
 
 def _get_speakers_by_oid(msc: MediaServerClient) -> dict[str, list[Speaker]]:
     speakers = {}
-    catalog = msc.api('catalog/get-all/', params={'format': 'flat', 'timings': 'yes'})
+    catalog = msc.get_catalog(fmt='flat')
     for key in ['channels', 'videos', 'lives', 'photos']:
         for obj in catalog.get(key, []):
             oid = obj['oid']
