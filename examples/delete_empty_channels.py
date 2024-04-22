@@ -52,7 +52,7 @@ def clean_tree(tree, deleted_oids):
 
 
 def delete_empty_channels(msc, channel_oid_blacklist, max_date, min_depth, apply=False):
-    tree = msc.api('catalog/get-all/')
+    tree = msc.get_catalog(fmt='tree')
     channel_oid_blacklist = list(channel_oid_blacklist)
     ms_url = msc.conf['SERVER_URL'] + '/permalink/'
 

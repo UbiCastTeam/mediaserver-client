@@ -113,7 +113,7 @@ def _get_old_medias(
     before_date: date,
     skip_category: str,
 ) -> list[dict]:
-    response = msc.api('catalog/get-all/', params={'format': 'flat', 'timings': 'yes'})
+    response = msc.get_catalog('flat')
     skip_category = skip_category.lower()
     old_medias = []
     for key in ('videos', 'lives', 'photos'):

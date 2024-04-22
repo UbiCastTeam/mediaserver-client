@@ -102,6 +102,7 @@ def api_client(catalog, users):
     from ms_client.client import MediaServerClient
 
     client = MediaServerClient()
+    client._server_version = (12, 3, 0)
     client.api = mock.MagicMock(side_effect=mock_api_call)
     with mock.patch('examples.fix_invalid_speakers.MediaServerClient', return_value=client):
         yield client
@@ -120,7 +121,9 @@ def test_list_invalid_speakers(api_client, csv_path):
     assert api_client.api.call_count == 2
     assert api_client.api.call_args_list[0] == mock.call(
         'catalog/get-all/',
-        params={'format': 'flat', 'timings': 'yes'}
+        params={'format': 'json'},
+        parse_json=True,
+        timeout=120
     )
     assert api_client.api.call_args_list[1] == mock.call(
         'users/',
@@ -185,7 +188,9 @@ def test_fix_invalid_speakers(api_client, csv_path, apply):
     assert api_client.api.call_count == (5 if apply else 1)
     assert api_client.api.call_args_list[0] == mock.call(
         'catalog/get-all/',
-        params={'format': 'flat', 'timings': 'yes'}
+        params={'format': 'json'},
+        parse_json=True,
+        timeout=120
     )
     if apply:
         assert api_client.api.call_args_list[1] == mock.call(

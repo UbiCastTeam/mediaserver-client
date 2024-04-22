@@ -16,12 +16,11 @@ def api_client(channel_tree):
                     for oid in kwargs['data']['oids']
                 }
             }
-        if url == 'catalog/get-all/':
-            return channel_tree
 
     from ms_client.client import MediaServerClient
     client = MediaServerClient()
     client.api = mock_api_call
+    client.get_catalog = lambda *args, **kwargs: channel_tree
     return client
 
 

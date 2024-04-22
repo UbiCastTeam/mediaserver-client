@@ -5,8 +5,11 @@ Copyright 2019, Florent Thiery, Stéphane Diemer
 """
 from json import JSONDecodeError
 import logging
-import requests
 import time
+from typing import Literal
+
+import requests
+
 from .lib import configuration as configuration_lib
 from .lib import content as content_lib
 from .lib import upload as upload_lib
@@ -299,3 +302,6 @@ class MediaServerClient():
 
     def import_users_csv(self, *args, **kwargs):
         return users_csv_lib.import_users_csv(self, *args, **kwargs)
+
+    def get_catalog(self, fmt=Literal['flat', 'tree', 'csv']):
+        return content_lib.get_catalog(self, fmt=fmt)
