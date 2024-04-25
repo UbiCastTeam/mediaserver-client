@@ -124,7 +124,7 @@ if __name__ == "__main__":
         "--temp_path",
         help="Temporary folder to use.",
         default=Path("."),
-        type=str,
+        type=Path,
     )
     parser.add_argument(
         "--oid", help="oid of the media to transfer", required=True, type=str
@@ -135,26 +135,33 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    msc = MediaServerClient(args.conf_src)
+    rc = 0
+    try:
+        msc_src = MediaServerClient(args.conf_src)
 
-    media_download_dir = Path(args.temp_path) / args.oid
-    media_download_dir.mkdir(parents=True)
+        media_download_dir = args.temp_path / args.oid
+        media_download_dir.mkdir(parents=True)
 
-    zip_path = backup_media(msc, args.oid, media_download_dir)
-    print(f"media {args.oid} downloaded to {zip_path}")
+        zip_path = backup_media(msc_src, args.oid, media_download_dir)
+        print(f"media {args.oid} downloaded to {zip_path}")
 
-    def print_progress(progress):
-        print(f"Uploading: {progress * 100:.1f}%", end="\r")
+        def print_progress(progress):
+            print(f"Uploading: {progress * 100:.1f}%", end="\r")
 
-    msc = MediaServerClient(args.conf_dest)
-    print("Starting upload")
-    resp = msc.add_media(file_path=zip_path, progress_callback=print_progress)
+        msc_dest = MediaServerClient(args.conf_dest)
+        print("Starting upload")
+        resp = msc_dest.add_media(file_path=zip_path, progress_callback=print_progress)
 
-    if resp["success"]:
-        print(f"File {zip_path} upload finished, object id is {resp['oid']}")
-    else:
-        print(f"Upload of {zip_path} failed: {resp}")
+        if resp["success"]:
+            print(f"File {zip_path} upload finished, object id is {resp['oid']}")
+        else:
+            print(f"Upload of {zip_path} failed: {resp}")
+    except Exception as e:
+        print(e)
+        rc = 1
+    finally:
+        if args.delete:
+            print(f"Deleting {media_download_dir}")
+            shutil.rmtree(media_download_dir)
 
-    if args.delete:
-        print(f"Deleting {media_download_dir}")
-        shutil.rmtree(media_download_dir)
+    sys.exit(rc)
