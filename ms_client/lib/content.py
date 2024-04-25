@@ -132,7 +132,7 @@ def get_catalog(client, fmt=Literal['flat', 'tree', 'csv']):
         else:
             return catalog
     else:
-        client.api(
+        return client.api(
             'catalog/get-all/',
             params={'format': fmt},
             parse_json=(fmt != 'csv'),
