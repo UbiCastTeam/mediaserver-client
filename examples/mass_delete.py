@@ -1,102 +1,168 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-'''
-Delete all media described by oids in a CSV file (first column)
-
-WARNING: THIS CANNOT BE CANCELED BE VERY CAREFUL WITH THIS SCRIPT
-
-By default, does just predict how much space is freed
-
-$ python examples/mass_delete.py --conf ubicast.json --csv media.csv
-v12345649684
-...
-Deleting 7 media would have freed 4.1 GB
-
-To really delete:
-$ python examples/mass_delete.py --conf ubicast.json --csv media.csv --apply
-
-
-'''
-import os
-import sys
 import argparse
+import os
+from pathlib import Path
+import sys
+
+try:
+    from ms_client.client import MediaServerClient
+except ModuleNotFoundError:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from ms_client.client import MediaServerClient
 
 GB = 1000 * 1000 * 1000
 
 
-if __name__ == '__main__':
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from ms_client.client import MediaServerClient
+def format_size(size_bytes: int) -> str:
+    """
+    Return human-readable size with automatic suffix.
+    """
+    for unit in ('', 'K', 'M', 'G', 'T', 'P', 'E', 'Z'):
+        if abs(size_bytes) < 1000:
+            return f'{size_bytes:.1f}{unit}B'
+        size_bytes /= 1000
+    return f'{size_bytes:.1f}YB'
 
-    parser = argparse.ArgumentParser()
 
+def _delete_medias(
+    msc: MediaServerClient,
+    oids: list[str],
+    force: bool = False,
+    apply: bool = False
+):
+    mode = '[APPLY] ' if apply else '[DRY-RUN] '
+    print(f'{mode}Fetching catalog.')
+
+    catalog = msc.get_catalog('flat')
+    oids = set(oids)
+    to_delete = {}
+    for obj_type, objects in catalog.items():
+        for obj in objects:
+            if obj['oid'] in oids:
+                to_delete[obj['oid']] = obj['storage_used']
+
+    print(f'{mode}Found {len(to_delete)} objects in the catalog matching your CSV.')
+
+    if apply:
+        print(f'{mode}Starting deletion of {len(to_delete)} catalog objects.')
+        params = {'oids': list(to_delete.keys())}
+        if force:
+            params['force'] = 'yes'
+        deleted_statuses = msc.api('catalog/bulk_delete/', method='post', data=params)['statuses']
+
+        deleted_count = 0
+        deleted_size = 0
+        for object_id, status in deleted_statuses.items():
+            if status['status'] == 200:
+                deleted_count += 1
+                deleted_size += to_delete[object_id]
+            else:
+                print(f'{mode}Media {object_id} could not be deleted: {status.get("message")}')
+
+        print(f'{mode}Deleted {deleted_count} VODs, freed {format_size(deleted_size)}.')
+    else:
+        oids = list(to_delete.keys())
+        total_size = sum(to_delete.values())
+        print(f'{mode}Would have deleted {len(oids)} VODs: {oids}')
+        print(
+            f'{mode}Deleting these VODs would have freed {format_size(total_size)}.'
+        )
+
+
+def delete_medias_from_csv(sys_args):
+    parser = argparse.ArgumentParser(
+        'mass_delete',
+        description='''
+            Delete all media described by oids in a CSV file (first column)
+
+            WARNING: ENABLE THE RECYCLE-BIN ON YOUR PLATFORM BEFORE RUNNING THIS SCRIPT.
+            IF YOU DON'T, OR IF YOU USE THE "--force" FLAG, YOUR ACTIONS WILL BE IRREVERSIBLE.
+
+            By default, the script just reports the space that would be freed (no actual
+            deletions).
+
+            $ python examples/mass_delete.py --conf ubicast.json --csv media.csv
+            v12345649684
+            ...
+            Deleting 7 media would have freed 4.1 GB
+
+            To actually perform the deletions, pass "--apply":
+            $ python examples/mass_delete.py --conf ubicast.json --csv media.csv --apply
+
+            If you've made a mistake, assuming the recycle-bin is active on your platform
+            and you didn't use "--force", you can revert your actions by manually selecting
+            and restoring content from the recycle-bin.
+        ''',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument(
         '--conf',
         help='Path to the configuration file.',
         required=True,
         type=str
     )
-
     parser.add_argument(
         '--csv',
-        help='Path to CSV file; the first column is expected to be the OID. Lines starting with "#" will be ignored',
+        help='Path to CSV file; the first column is expected to be the OID. '
+             'Lines starting with "#" will be ignored',
         required=True,
-        type=str
+        type=Path
     )
-
     parser.add_argument(
         '--csv-separator',
         help='CSV separator',
         default='\t',
         type=str
     )
-
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        default=False,
+        help='Bypass the recycle-bin. With this flag, videos will be deleted without the '
+             'possibility of restoration, even if the recycle-bin is activated on the '
+             'platform. Beware, if the recycle-bin is not activated on the platform, '
+             'medias will be deleted forever whether this flag is passed or not. For '
+             'videos to be deleted to the recycle-bin, you need to activate the '
+             'recycle-bin on the platform AND omit this flag.'
+    )
     parser.add_argument(
         '--apply',
         action='store_true',
         default=False,
-        help='Really delete; without this flag, an estimation of the freed space will be printed instead.'
+        help='Really delete; without this flag, an estimation of the freed space will be '
+             'printed instead.'
     )
 
-    args = parser.parse_args()
-
+    args = parser.parse_args(sys_args)
     msc = MediaServerClient(args.conf)
-    # ping
-    print(msc.api('/'))
+    msc.conf['TIMEOUT'] = max(600, msc.conf['TIMEOUT'])
 
-    with open(args.csv, 'r') as f:
-        csv_data = f.read().strip()
-        count = 0
-        freed = 0
-        lines = [line for line in csv_data.split('\n') if (line and not line.startswith('#'))]
-        total_lines = len(lines)
-        print(f'About to delete {total_lines} media')
-        # there is a limit to how many subprocesses can be launched
-        if total_lines > 30000:
-            print('We recommend against deleting that many files at once')
-            sys.exit(1)
+    # Ping
+    print(f'Server url: {msc.conf["SERVER_URL"]}')
+    print(f'Mediaserver version: {msc.api("/")["mediaserver"]}')
+    oids = [
+        clean_line.split(args.csv_separator)[0].strip()
+        for line in args.csv.read_text().strip().split('\n')
+        if (clean_line := line.strip().strip('\r')) and not line.startswith('#')
+    ]
 
-        for index, line in enumerate(lines):
-            oid = line.split(args.csv_separator)[0]
-            if oid:
-                params = {'oid': oid, 'full': 'yes'}
-                try:
-                    print(f'[{index+1}/{total_lines}] About to delete {oid}')
-                    info = msc.api('medias/get/', params=params)['info']
-                    freed += info['storage_used']
-                    if args.apply:
-                        data = {
-                            'oid': oid,
-                            'delete_metadata': 'yes',
-                            'delete_resources': 'yes',
-                        }
-                        print(f'Deleting {oid}')
-                        msc.api('medias/delete/', method='post', data=data)
-                    count += 1
-                except Exception as e:
-                    print(f'Error on {oid}: {e}')
-        freed_gb = round(freed / GB, 1)
-        if not args.apply:
-            print(f'Deleting {count} media would have freed {freed_gb} GB ({freed} bytes)')
-        else:
-            print(f'Deleted {count} media, freed {freed_gb} GB ({freed} bytes)')
+    if args.apply:
+        answer = input(
+            f'The script is running in normal mode. {len(oids)} medias will be deleted.\n'
+            'Please ensure that the recycle-bin is enabled on your platform '
+            f'{msc.conf["SERVER_URL"]}/admin/settings/#id_trash_enabled \n'
+            'Proceed ? [y / n]'
+        )
+        if answer.lower() not in ['yes', 'y']:
+            sys.exit(0)
+    else:
+        print(
+            'The script is running in dry-run mode. No media will be deleted. '
+            f'A report of the storage used by the {len(oids)} medias in your CSV will be '
+            'generated.'
+        )
+    _delete_medias(msc, oids, force=args.force, apply=args.apply)
+
+
+if __name__ == '__main__':
+    delete_medias_from_csv(sys.argv[1:])
