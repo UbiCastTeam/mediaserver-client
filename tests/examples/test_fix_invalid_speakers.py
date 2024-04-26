@@ -108,13 +108,18 @@ def api_client(catalog, users):
         yield client
 
 
-def test_list_invalid_speakers(api_client, csv_path):
+@pytest.mark.parametrize('ignore_errors', [
+    pytest.param([], id='all errors'),
+    pytest.param(['MULTIPLE_NAME', 'INVALID_ID', 'INVALID_NAME'], id='filtered errors'),
+])
+def test_list_invalid_speakers(api_client, csv_path, ignore_errors):
     assert not csv_path.exists()
     fix_invalid_speakers([
         '--conf=./conf.json',
         '--action=list',
         f'--csv-file={csv_path}',
         '--log-level=info',
+        *(f'--ignore-errors={err}' for err in ignore_errors)
     ])
 
     # Check api calls and deleted oids
@@ -133,18 +138,36 @@ def test_list_invalid_speakers(api_client, csv_path):
     # Check output
     assert csv_path.exists()
     csv_lines = [line for line in csv_path.read_text().split('\n') if line]
-    assert len(csv_lines) == 5
     assert csv_lines[0] == 'email,ids,names,url,reasons,corrected_email,corrected_id,corrected_name'
-    assert set(csv_lines[1:]) == {
-        'user_2@example.com,"UsEr_TwO, user_2","user 2, user two",'
-        'https://mediaserver/permalink/live_1/,"MULTIPLE_ID, MULTIPLE_NAME",,,',
-        'user_3@example.com,UsEr_thRee,user 3,'
-        'https://mediaserver/permalink/video_2/,"INVALID_ID, INVALID_NAME",,,',
-        'invalid_1@example.com,invalid,invalid,'
-        'https://mediaserver/permalink/channel_1/,INVALID_EMAIL,,,',
-        'invalid_2@example.com,invalid,invalid,'
-        'https://mediaserver/permalink/live_1/,INVALID_EMAIL,,,',
-    }
+    if ignore_errors:
+        assert len(csv_lines) == 4
+        assert set(csv_lines[1:]) == {
+            'user_2@example.com,"UsEr_TwO, user_2","user 2, user two",'
+            'https://mediaserver/search/?text=user_2%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,MULTIPLE_ID,,,',
+            'invalid_1@example.com,invalid,invalid,'
+            'https://mediaserver/search/?text=invalid_1%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,INVALID_EMAIL,,,',
+            'invalid_2@example.com,invalid,invalid,'
+            'https://mediaserver/search/?text=invalid_2%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,INVALID_EMAIL,,,',
+        }
+    else:
+        assert len(csv_lines) == 5
+        assert set(csv_lines[1:]) == {
+            'user_2@example.com,"UsEr_TwO, user_2","user 2, user two",'
+            'https://mediaserver/search/?text=user_2%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,"MULTIPLE_ID, MULTIPLE_NAME",,,',
+            'user_3@example.com,UsEr_thRee,user 3,'
+            'https://mediaserver/search/?text=user_3%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,"INVALID_ID, INVALID_NAME",,,',
+            'invalid_1@example.com,invalid,invalid,'
+            'https://mediaserver/search/?text=invalid_1%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,INVALID_EMAIL,,,',
+            'invalid_2@example.com,invalid,invalid,'
+            'https://mediaserver/search/?text=invalid_2%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,INVALID_EMAIL,,,',
+        }
 
 
 @pytest.mark.parametrize('apply', [True, False])
@@ -155,22 +178,26 @@ def test_fix_invalid_speakers(api_client, csv_path, apply):
         'email,ids,names,url,reasons,corrected_email,corrected_id,corrected_name',
         (
             'user_2@example.com,"UsEr_TwO, user_2","user 2, user two",'
-            'https://mediaserver/permalink/live_1/,"MULTIPLE_ID, MULTIPLE_NAME",'
+            'https://mediaserver/search/?text=user_2%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,"MULTIPLE_ID, MULTIPLE_NAME",'
             ',user_2,user two'
         ),
         (
             'user_3@example.com,UsEr_thRee,user 3,'
-            'https://mediaserver/permalink/video_2/,"INVALID_ID, INVALID_NAME",'
+            'https://mediaserver/search/?text=user_3%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,"INVALID_ID, INVALID_NAME",'
             ',user_3,user three'
         ),
         (
             'invalid_1@example.com,invalid,invalid,'
-            'https://mediaserver/permalink/channel_1/,INVALID_EMAIL,valid_user@example.com,'
+            'https://mediaserver/search/?text=invalid_1%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,INVALID_EMAIL,valid_user@example.com,'
             'valid_user,valid user'
         ),
         (
             'invalid_2@example.com,invalid,invalid,'
-            'https://mediaserver/permalink/live_1/,INVALID_EMAIL,'
+            'https://mediaserver/search/?text=invalid_2%40example.com'
+            '&in_speaker&for_videos&for_lives&for_photos,INVALID_EMAIL,'
             'DELETE,DELETE,DELETE'
         ),
     ]))

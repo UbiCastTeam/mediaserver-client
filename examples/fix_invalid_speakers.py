@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import sys
 from typing import NamedTuple, Optional
+import urllib.parse
 
 try:
     from ms_client.client import MediaServerClient
@@ -139,7 +140,12 @@ def _get_users(msc: MediaServerClient, page_size=500):
     return users
 
 
-def _list_invalid_speakers(msc: MediaServerClient, csv_file: Path):
+def _list_invalid_speakers(
+    msc: MediaServerClient,
+    csv_file: Path,
+    name_format: str,
+    ignore_errors: list[str],
+):
     speakers_by_oid = _get_speakers_by_oid(msc)
     valid_emails = {
         email: user
@@ -159,7 +165,11 @@ def _list_invalid_speakers(msc: MediaServerClient, csv_file: Path):
                     data.ids.add(speaker.id)
                 if speaker.name:
                     data.names.add(speaker.name)
-                data.url = f'{msc.conf["SERVER_URL"]}/permalink/{oid}/'
+                data.url = (
+                    f'{msc.conf["SERVER_URL"]}/search/'
+                    f'?text={urllib.parse.quote_plus(speaker.email)}'
+                    f'&in_speaker&for_videos&for_lives&for_photos'
+                )
 
     with csv_file.open('w', newline='') as csvfile:
         speakers_writer = csv.DictWriter(
@@ -174,7 +184,15 @@ def _list_invalid_speakers(msc: MediaServerClient, csv_file: Path):
             if speaker_data.email in valid_emails:
                 user = valid_emails[speaker_data.email]
                 user_speaker_id = (user.get('speaker_id') or '').strip()
-                user_fullname = ((user.get('first_name') or '') + ' ' + (user.get('last_name') or '')).strip()
+                user_first_name = (user.get('first_name') or '').strip()
+                user_last_name = (user.get('last_name') or '').strip()
+                if user_first_name or user_last_name:
+                    user_fullname = name_format.format(
+                        first_name=user_first_name, last_name=user_last_name
+                    ).strip()
+                else:
+                    user_fullname = speaker_data.email.rsplit('@', 1)[0]
+
                 if user_speaker_id and speaker_data.ids and not any(
                     spk_id == user_speaker_id
                     for spk_id in speaker_data.ids
@@ -191,6 +209,7 @@ def _list_invalid_speakers(msc: MediaServerClient, csv_file: Path):
                 speaker_data.reasons.add('MULTIPLE_ID')
             if len(speaker_data.names) > 1:
                 speaker_data.reasons.add('MULTIPLE_NAME')
+            speaker_data.reasons.difference_update(ignore_errors)
             if speaker_data.reasons:
                 speakers_writer.writerow(speaker_data.to_csv_row())
 
@@ -295,7 +314,8 @@ def fix_invalid_speakers(sys_args):
             '- the first column is the speaker email.\n'
             '- the second column is the associated speaker_id(s).\n'
             '- the third column is the associated speaker_name(s).\n'
-            '- the fourth column has one example object_id that this speaker is associated to.\n'
+            '- the fourth column is a link to a Nudgis search page for this specific speaker '
+            'email (works best if you disable approximate search).\n'
             '- the fifth column is the reason(s) why this speaker was flagged as invalid. This '
             'column can list up to 5 reasons:\n'
             '\t* INVALID_EMAIL: the speaker email cannot be found in the user database. This can '
@@ -347,6 +367,24 @@ def fix_invalid_speakers(sys_args):
         type=Path,
     )
     parser.add_argument(
+        '--name-format',
+        help='Format of a valid user\'s full name (for the reported errors). By default, '
+             'the script uses --name-format="{first_name} {last_name}", which will consider '
+             '"John Doe" valid, but not "Doe, John". For "Doe, John" to be  considered '
+             'valid, you would need to pass --name-format="{last_name}, {first_name}".',
+        default='{first_name} {last_name}',
+        type=str,
+    )
+    parser.add_argument(
+        '--ignore-errors',
+        help='By default the script reports all errors. You can pass the error types to '
+             'be ignored using this argument. To ignore multiple error types, pass this '
+             'argument multiple times '
+             '(e.g.: --ignore-errors=INVALID_NAME --ignore-errors=MULTIPLE_NAME).',
+        action='append',
+        default=[],
+    )
+    parser.add_argument(
         '--apply',
         help='Whether to apply changes or not. If not set, the script will simulate '
              'the work and generate logs. It is a good idea to set "--log-level" to '
@@ -369,7 +407,7 @@ def fix_invalid_speakers(sys_args):
     msc.conf['TIMEOUT'] = max(600, msc.conf['TIMEOUT'])
 
     if args.action == 'list':
-        _list_invalid_speakers(msc, args.csv_file)
+        _list_invalid_speakers(msc, args.csv_file, args.name_format, args.ignore_errors)
     elif args.action == 'fix':
         if args.apply:
             answer = input(
