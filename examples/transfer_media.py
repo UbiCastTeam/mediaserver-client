@@ -135,7 +135,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    rc = 0
     try:
         msc_src = MediaServerClient(args.conf_src)
 
@@ -156,12 +155,7 @@ if __name__ == "__main__":
             print(f"File {zip_path} upload finished, object id is {resp['oid']}")
         else:
             print(f"Upload of {zip_path} failed: {resp}")
-    except Exception as e:
-        print(e)
-        rc = 1
     finally:
-        if args.delete:
+        if args.delete and media_download_dir.exists():
             print(f"Deleting {media_download_dir}")
             shutil.rmtree(media_download_dir)
-
-    sys.exit(rc)
