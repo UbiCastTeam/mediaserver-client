@@ -35,7 +35,7 @@ DEFAULT_PLAIN_EMAIL_TEMPLATE = (
     'on the video platform {platform_hostname} should '
     'be deleted according to the University policy. You have until '
     '{delete_date} to review each media below and set the '
-    '"{skip_category}" category if you need to preserve this content. '
+    '"{skip_categories}" category if you need to preserve this content. '
     'After this date, the media will be deleted. You can also delete it '
     'when you review it.\n\n'
     'List of media to review ({media_count}):\n'
@@ -46,7 +46,7 @@ DEFAULT_HTML_EMAIL_TEMPLATE = (
     'hosted on the video platform {platform_hostname} should be deleted '
     'according to the University policy. You have '
     'until {delete_date} to review each media below and set the '
-    '"{skip_category}" category if you need to preserve this content. '
+    '"{skip_categories}" category if you need to preserve this content. '
     'After this date, the media will be deleted. You can also delete '
     'it when you review it.</p>\n'
     '<p>List of media to review ({media_count}):</p>\n'
@@ -108,39 +108,76 @@ def format_timedelta(delta: timedelta):
     return f'{months} months'
 
 
-def _get_old_medias(
+def _get_medias(
     msc: MediaServerClient,
-    before_date: date,
-    skip_category: str,
+    added_after: Optional[date] = None,
+    added_before: Optional[date] = None,
+    views_max_count: Optional[int] = None,
+    views_playback_threshold: Optional[int] = None,
+    views_after: Optional[date] = None,
+    views_before: Optional[date] = None,
+    skip_categories: list[str] = (),
 ) -> list[dict]:
-    response = msc.get_catalog('flat')
-    skip_category = skip_category.lower()
-    old_medias = []
-    for key in ('videos', 'lives', 'photos'):
-        medias = response.get(key, ())
+    catalog = msc.get_catalog('flat')
+    unwatched = {}
+    if views_max_count is not None:
+        unwatched = {
+            unwatched['object_id']: unwatched['views_over_period']
+            for unwatched in msc.api(
+                'stats/unwatched/',
+                params={
+                    'playback_threshold': views_playback_threshold,
+                    'views_threshold': views_max_count,
+                    'recursive': 'yes',
+                    'sd': views_after.strftime('%Y-%m-%d'),
+                    'ed': views_before.strftime('%Y-%m-%d'),
+                },
+            )['unwatched']
+        }
+
+    channels = {channel['oid']: channel for channel in catalog['channels']}
+    selected_medias = []
+    for key in ('videos', 'lives'):
+        medias = catalog.get(key, ())
         for media in medias:
             add_date = datetime.strptime(media['add_date'], '%Y-%m-%d %H:%M:%S').date()
-            categories = {cat.strip(' \r\t').lower() for cat in (media['categories'] or '').split('\n')}
-            if add_date < before_date and (not skip_category or skip_category not in categories):
-                old_medias.append(media)
+            categories = {cat.strip(' \r\t').lower() for cat in (media['categories'] or '').strip('\n').split('\n')}
+            media_pp = f'{media["title"]} [{media["oid"]}]'
+            if added_before and add_date >= added_before:
+                before_date_pp = added_before.strftime('%Y-%m-%d')
+                logger.debug(
+                    f'{media_pp} was skipped because it was added after {before_date_pp}.'
+                )
+            elif added_after and add_date < added_after:
+                after_date_pp = added_after.strftime('%Y-%m-%d')
+                logger.debug(
+                    f'{media_pp} was skipped because it was added before {after_date_pp}.'
+                )
+            elif views_max_count and media['oid'] not in unwatched:
+                views_after_pp = views_after.strftime('%Y-%m-%d')
+                views_before_pp = views_before.strftime('%Y-%m-%d')
+                logger.debug(
+                    f'{media_pp} was skipped because it was viewed more than {views_max_count} '
+                    f'times between {views_after_pp} and {views_before_pp}.'
+                )
+            elif skip_categories and (common_categories := categories.intersection(skip_categories)):
+                logger.debug(
+                    f'{media_pp} was skipped because it has the categories {common_categories}.'
+                )
             else:
-                media_pp = f'{media["title"]} [{media["oid"]}]'
-                if add_date >= before_date:
-                    before_date_pp = before_date.strftime('%Y-%m-%d')
-                    logger.debug(
-                        f'{media_pp} was skipped because it was added after {before_date_pp}.'
-                    )
-                else:
-                    logger.debug(
-                        f'{media_pp} was skipped because it has the skip_category.'
-                    )
+                if views_max_count:
+                    media['views_over_period'] = unwatched[media['oid']]
+                    media['views_after'] = views_after.strftime('%Y-%m-%d')
+                    media['views_before'] = views_before.strftime('%Y-%m-%d')
+                media['managers_emails'] = channels.get(media['parent_oid'], {}).get('managers_emails')
+                selected_medias.append(media)
 
-    storage_used = sum(media['storage_used'] for media in old_medias)
+    storage_used = sum(media['storage_used'] for media in selected_medias)
     logger.info(
-        f'Found {len(old_medias)} medias added before {before_date.strftime("%Y-%m-%d")} '
+        f'Found {len(selected_medias)} medias matching the given filters '
         f'(size: {format_size(storage_used)}).'
     )
-    return old_medias
+    return selected_medias
 
 
 def _get_users(msc: MediaServerClient, page_size=500):
@@ -160,7 +197,7 @@ def _prepare_mail(
     speaker_email: str,
     medias: list[dict],
     delete_date: date,
-    skip_category: str,
+    skip_categories: list[str],
     html_template: Optional[str],
     plain_template: Optional[str],
     email_subject_template: str,
@@ -174,7 +211,7 @@ def _prepare_mail(
         'media_count': len(medias),
         'media_size_pp': format_size(sum(media['storage_used'] for media in medias)),
         'delete_date': delete_date.strftime('%B %d, %Y'),
-        'skip_category': skip_category,
+        'skip_categories': ' | '.join(f'"{cat}"' for cat in skip_categories),
         'platform_hostname': urlparse(msc.conf['SERVER_URL']).netloc,
     }
     message = MIMEMultipart('alternative')
@@ -186,20 +223,28 @@ def _prepare_mail(
     now = datetime.now()
     for media in medias:
         media_add_date = datetime.strptime(media['add_date'], '%Y-%m-%d %H:%M:%S')
-        media_contexts.append({
+        media_context = {
             'title': media['title'],
-            'vly': str(media['views_last_year']),
-            'vlm': str(media['views_last_month']),
             'add_date': media_add_date.strftime('%Y-%m-%d'),
             'age': format_timedelta(now - media_add_date),
             'view_url': f'{ms_perma_url}{media["oid"]}/iframe/',
             'edit_url': f'{ms_edit_url}{media["oid"]}/#id_categories',
-        })
+        }
+        if 'views_over_period' in media:
+            media_context['views'] = (
+                f'{media["views_over_period"]} times between '
+                f'{media["views_after"]} and {media["views_before"]}'
+            )
+        else:
+            media_context['views'] = (
+                f'{media["views_last_year"]} times last year, '
+                f'{media["views_last_month"]} times last month'
+            )
+        media_contexts.append(media_context)
     if plain_template:
         plain_media_list = '\n'.join(
             (
-                '\t- {view_url} - "{title}" - added on {add_date} ({age} ago), '
-                'viewed {vly} times last year, {vlm} times last month '
+                '\t- {view_url} - "{title}" - added on {add_date} ({age} ago), viewed {views} '
                 '(click here {edit_url} to protect against deletion)'
             ).format(**ctx)
             for ctx in media_contexts
@@ -209,8 +254,7 @@ def _prepare_mail(
     if html_template:
         html_media_list = '\n'.join(
             (
-                '<li><a href="{view_url}">"{title}"</a> added on {add_date} ({age} ago), '
-                'viewed {vly} times last year, {vlm} times last month '
+                '<li><a href="{view_url}">"{title}"</a> added on {add_date} ({age} ago), viewed {views} '
                 '(click <a href="{edit_url}">here</a> to protect against deletion)</li>'
             ).format(**ctx)
             for ctx in media_contexts
@@ -265,14 +309,15 @@ def _get_templates(
     return html_template, plain_template
 
 
-def _warn_speakers_about_upcoming_deletion(
+def _warn_speakers_about_deletion(
     msc: MediaServerClient,
     medias: list[dict],
     delete_date: date,
-    skip_category: str,
+    skip_categories: list[str],
     html_email_template: Path,
     plain_email_template: Path,
     email_subject_template: str,
+    fallback_to_channel_manager: bool,
     fallback_email: str,
     apply: bool = False,
 ):
@@ -306,10 +351,15 @@ def _warn_speakers_about_upcoming_deletion(
             for speaker_email in (media.get('speaker_email') or '').split('|')
         ]
         for speaker_id, speaker_email in zip_longest(speakers_ids, speakers_emails):
-            if (not speaker_email or speaker_email not in valid_emails) and speaker_id:
-                speaker_email = emails_by_speaker_id[speaker_id]
             if speaker_email and speaker_email in valid_emails:
                 recipients.append(speaker_email)
+            elif speaker_id and emails_by_speaker_id[speaker_id] in valid_emails:
+                recipients.append(emails_by_speaker_id[speaker_id])
+            elif fallback_to_channel_manager and media['managers_emails']:
+                for manager_email in media['managers_emails'].split('\n'):
+                    manager_email = manager_email.strip(' \r\t').lower()
+                    if not manager_email.startswith('#') and manager_email in valid_emails:
+                        recipients.append(manager_email)
 
         if not recipients:
             to_fallback.append(media)
@@ -324,7 +374,7 @@ def _warn_speakers_about_upcoming_deletion(
             speaker_email=speaker_email,
             medias=speaker_medias,
             delete_date=delete_date,
-            skip_category=skip_category,
+            skip_categories=skip_categories,
             html_template=html_template,
             plain_template=plain_template,
             email_subject_template=email_subject_template,
@@ -364,7 +414,7 @@ def _warn_speakers_about_upcoming_deletion(
                 speaker_email=fallback_email,
                 medias=to_fallback,
                 delete_date=delete_date,
-                skip_category=skip_category,
+                skip_categories=skip_categories,
                 html_template=html_template,
                 plain_template=plain_template,
                 email_subject_template=email_subject_template,
@@ -393,6 +443,9 @@ def _warn_speakers_about_upcoming_deletion(
 def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = False):
     ms_url = msc.conf['SERVER_URL'] + '/permalink/'
     medias = {media['oid']: media for media in medias}
+    if not medias:
+        logger.info('No media to delete.')
+        return
     deleted_count = 0
     deleted_size = 0
     if apply:
@@ -421,134 +474,193 @@ def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = Fal
             deleted_count += 1
             deleted_size += media['storage_used']
         logger.info(
-            f'[Dry run] {deleted_count} medias ({format_size(deleted_size)}) would have been have been deleted.'
+            f'[Dry run] {deleted_count} medias ({format_size(deleted_size)}) '
+            f'would have been have been deleted.'
         )
-
-
-class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.add_argument(
-            '--conf',
-            help='Path to the configuration file (e.g. myconfig.json).',
-            required=True,
-            type=str,
-        )
-        self.add_argument(
-            '--delete-date',
-            help='Date after which content will be deleted when running '
-                 'the script, e.g. "2024-10-28"; running this script '
-                 'before this date will result in notifying users, '
-                 'otherwise it will delete the medias.',
-            type=str,
-            required=True,
-        )
-        self.add_argument(
-            '--added-before',
-            help='Maximum "add_date" for a media to be considered for '
-                 'deletion (e.g. "2022-01-28"). Any media added on or '
-                 'after this date will not be considered for deletion.',
-            type=str,
-            required=True,
-        )
-        self.add_argument(
-            '--skip-category',
-            help='Category name used to signify that content must be preserved.',
-            type=str,
-            default='do not delete',
-        )
-        self.add_argument(
-            '--html-email-template',
-            help='Path to HTML email template file. The template will be populated at '
-                 'runtime with dynamic values via these 5 variables: platform_hostname, '
-                 'media_count, delete_date, skip_category, list_of_media. Your template '
-                 'should use Python new-style formatting syntax '
-                 '(e.g.: "You have until {delete_date} to review each media").',
-            type=Path,
-            default='./email.html',
-        )
-        self.add_argument(
-            '--plain-email-template',
-            help='Path to plain email template file. This plain variant will be displayed '
-                 'to users whose email client is set to prevent HTML in emails. The template '
-                 'variables available are the same as for the "--html-email-template" argument.',
-            type=Path,
-            default='./email.txt',
-        )
-        self.add_argument(
-            '--email-subject-template',
-            help='Template string to use for the email subject line. The template '
-                 'variables available are the same as for the "--html-email-template" argument.',
-            type=str,
-            default='Action required on the video platform {platform_hostname}: '
-                    '{media_count} medias will be deleted on {delete_date}',
-        )
-        self.add_argument(
-            '--fallback-email',
-            help='Fallback recipient address. This address will receive a notification for all '
-                 'medias that do not have speakers or for which none of the speakers point to '
-                 'an existing user with a valid email address. Medias for which a notification '
-                 'was sent but the delivery failed will also be added to the notification sent '
-                 'to this address. If mail delivery to this fallback address fails, the script '
-                 'will fail with an error. This ensures that at least one address is notified of '
-                 'the impending deletion of any media.',
-            type=str,
-            required=True,
-        )
-        self.add_argument(
-            '--apply',
-            help='Whether to apply changes or not. '
-                 'If not set, the script will simulate the work and generate logs. '
-                 'It is a good idea to set "--log-level" to "debug" if "--apply" is not set.',
-            action='store_true',
-        )
-        self.add_argument(
-            '--test-email-template',
-            help='Use this flag to test your email templates. '
-                 'A single email will be printed to the console with dummy values. '
-                 'No email will be sent and no media will be deleted.',
-            action='store_true',
-        )
-        self.add_argument(
-            '--log-level',
-            help='Log level.',
-            default='info',
-            choices=['critical', 'error', 'warn', 'info', 'debug']
-        )
-
-    def error(self, message):
-        self.print_help()
-        sys.stderr.write('error: %s\n' % message)
-        sys.exit(2)
 
 
 def delete_old_medias(sys_args):
-    parser = ArgumentParser(
+    parser = argparse.ArgumentParser(
         'mass_delete_old_medias',
         description=(
-            'This script deletes (or warns speakers about the '
-            'impending deletion of) medias added before a given date. '
-            'To run this script properly, start by choosing a '
-            '"--delete-date" in the future (you should give your users '
-            'enough time to react to the deletion notifications). '
-            'Then, choose a "--added-before" date that will be used to '
-            'filter medias to consider for deletion. Fill out the '
-            'other parameters to your liking then run the script. On '
-            'the first run the script will warn every speaker of the '
-            'impending deletion of their medias. You can run the '
-            'script as many times as you want until the "--delete-date" '
-            'to send reminders to speakers. Be sure to always use the '
-            'same "--added-before" parameter as you did in the first '
-            'run, to ensure, the medias considered for deletion are '
-            'always the same. Finally, after the "--delete-date" has '
-            'passed, run the script one more time, still with the same '
-            '"--added-before" parameter as the first run. This last run '
-            'will delete the medias to the recycle-bin (assuming the '
-            'recycle-bin is activated, otherwise the deletion cannot be '
-            'undone). You can repeat this whole process at regular '
-            'intervals and with different parameters (every 6 months, '
-            'every year...) to cleanup old medias.'
-        )
+            'This script deletes (or warns speakers about the impending deletion of) medias '
+            'matching certain filters. To run this script properly, start by choosing a '
+            '"--delete-date" set in the future (you should give your users enough time to react '
+            'to the deletion notifications). Then, choose at least one filter among:'
+            '\n\t- "--added-after" date, to select only media that were added after the given '
+            'date.'
+            '\n\t- "--added-before" date, to select only media that were added before the given '
+            'date.'
+            '\n\t- "–-views-max-count", to select only medias that have had less than the given '
+            'number of views over a given period ("--views-after" / "--views-before"). When '
+            'this parameter is given, an additional parameter ("--views-playback-threshold") can '
+            'be used to count only views where the playback time is above a number of seconds.'
+            '\nWhen applying multiple filters, only medias that match all the filters are '
+            'considered for deletion. If no filters are given, to prevent mistakes, the command '
+            'will error out without doing anything.'
+            '\n\nFill out the other parameters to your liking then run the script. On the first '
+            'run, the script will warn every speaker of the impending deletion of their medias. '
+            'You can run the script as many times as you want until the "--delete-date" to send '
+            'reminders to speakers. Be sure to always use the same filters as you did during the '
+            'first run, to ensure, the medias considered for deletion are always the same. '
+            'Finally, after the "--delete-date" has passed, run the script one more time, still '
+            'with the same filters as the first run. This last run will delete the medias to the '
+            'recycle-bin (assuming the recycle-bin is activated, otherwise the deletion cannot be '
+            'undone). You can repeat this whole process at regular intervals and with different '
+            'parameters (every 6 months, every year...) to cleanup old medias.'
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument(
+        '--conf',
+        help='Path to the configuration file (e.g. myconfig.json).',
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        '--delete-date',
+        help='Date after which content will be deleted when running the script, e.g. "2024-10-28"; '
+             'running this script before this date will result in notifying users, otherwise it '
+             'will delete the medias.',
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        '--added-after',
+        help='Minimum "add_date" for a media to be considered for deletion (e.g. "2022-01-28"). '
+             'Any media added before this date will not be considered for deletion.',
+        type=str,
+        required=False,
+    )
+    parser.add_argument(
+        '--added-before',
+        help='Maximum "add_date" for a media to be considered for deletion (e.g. "2022-01-28"). '
+             'Any media added on or after this date will not be considered for deletion.',
+        type=str,
+        required=False,
+    )
+    parser.add_argument(
+        '--views-max-count',
+        help='Maximum number of views a media can have over a given period ("--views-after" '
+             '/ "--views-before") to be considered for deletion (e.g.: --views-max-count=3 to '
+             'select only media that have 3 views or less during the given period). Any media '
+             'that has been viewed more times than this number over the given period will not be '
+             'considered for deletion. If this parameter is given, then both "--views-after" '
+             'and "--views-before" must be given too (and they must be in the past). The script '
+             'will error out before doing anything if that is not the case. This ensures the '
+             'selection remains the same between runs.',
+        type=int,
+        required=False,
+    )
+    parser.add_argument(
+        '--views-playback-threshold',
+        help='Minimum time played (in seconds) to count as a view. Defaults to 0 (meaning any view '
+             'with a duration above 0 is counted). If "–-views-max-count" is not given, this '
+             'parameter will be ignored. Example: --views-max-count=3 --views-playback-threshold=5 '
+             'will select only media that have been viewed 3 times or less for more than 5 seconds.',
+        type=int,
+        required=False,
+        default=0,
+    )
+    parser.add_argument(
+        '--views-after',
+        help='Start of the period to consider for the "–-views-max-count" parameter. If '
+             '"–-views-max-count" is not given, this parameter will be ignored. Required '
+             'if "--views-max-count" is given. Examples: "2020-09-01".',
+        type=str,
+        required=False,
+    )
+    parser.add_argument(
+        '--views-before',
+        help='End of the period to consider for the "–-views-max-count" parameter. If '
+             '"–-views-max-count" is not given, this parameter will be ignored. Required '
+             'if "--views-max-count" is given. Examples: "2021-08-31".',
+        type=str,
+        required=False,
+    )
+    parser.add_argument(
+        '--skip-category',
+        help='Category name used to signify that content must be preserved. Can be '
+             'passed multiple times to skip multiple categories '
+             '(e.g.: --skip-category="do not delete" --skip-category="to keep"). '
+             'Default is --skip-category="do not delete"',
+        dest='skip_categories',
+        action='append',
+        default=[],
+    )
+    parser.add_argument(
+        '--html-email-template',
+        help='Path to HTML email template file. The template will be populated at runtime with '
+             'dynamic values via these 5 variables: platform_hostname, media_count, delete_date, '
+             'skip_categories, list_of_media. Your template should use Python new-style formatting '
+             'syntax (e.g.: "You have until {delete_date} to review each media").',
+        type=Path,
+        default='./email.html',
+    )
+    parser.add_argument(
+        '--plain-email-template',
+        help='Path to plain email template file. This plain variant will be displayed to users '
+             'whose email client is set to prevent HTML in emails. The template variables '
+             'available are the same as for the "--html-email-template" argument.',
+        type=Path,
+        default='./email.txt',
+    )
+    parser.add_argument(
+        '--email-subject-template',
+        help='Template string to use for the email subject line. The template variables available '
+             'are the same as for the "--html-email-template" argument.',
+        type=str,
+        default='Action required on the video platform {platform_hostname}: '
+                '{media_count} medias will be deleted on {delete_date}',
+    )
+    parser.add_argument(
+        '--send-email-on-deletion',
+        help='Notify users on deletion of the list of deleted media and the freed storage summary. '
+             'Use "--html-email-template", "--plain-email-template" and "--email-subject-template" '
+             'to customize the emails sent on deletion.',
+        action='store_true',
+        required=False,
+        default=False,
+    )
+    parser.add_argument(
+        '--fallback-to-channel-manager',
+        help='If medias do not have speakers or if none of the speakers point to an existing '
+             'user, send an email to the channel manager if one exists (it must point to an '
+             'existing user in the database too).',
+        action='store_true',
+        required=False,
+        default=False,
+    )
+    parser.add_argument(
+        '--fallback-email',
+        help='Fallback recipient address. This address will receive a notification for all medias '
+             'that do not have speakers/channel-managers or for which none of the speakers/'
+             'channel-managers point to an existing user with a valid email address. Medias for '
+             'which a notification was sent but the delivery failed will also be added to the '
+             'notification sent to this address. If mail delivery to this fallback address fails, '
+             'the script will fail with an error. This ensures that at least one address is '
+             'notified of the impending deletion of any media.',
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        '--apply',
+        help='Whether to apply changes or not. If not set, the script will simulate the work and '
+             'generate logs. It is a good idea to set "--log-level" to "debug" if "--apply" is '
+             'not set.',
+        action='store_true',
+    )
+    parser.add_argument(
+        '--test-email-template',
+        help='Use this flag to test your email templates. A single email will be printed to the '
+             'console with dummy values. No email will be sent and no media will be deleted.',
+        action='store_true',
+    )
+    parser.add_argument(
+        '--log-level',
+        help='Log level.',
+        default='info',
+        choices=['critical', 'error', 'warn', 'info', 'debug']
     )
     args = parser.parse_args(sys_args)
 
@@ -574,9 +686,45 @@ def delete_old_medias(sys_args):
             'No email will be sent, no media will be deleted.'
         )
     today = date.today()
-    delete_date = datetime.strptime(args.delete_date, "%Y-%m-%d").date()
-    added_before_date = datetime.strptime(args.added_before, "%Y-%m-%d").date()
-    skip_category = args.skip_category.strip()
+    delete_date = datetime.strptime(args.delete_date, '%Y-%m-%d').date()
+    added_after = None
+    added_before = None
+    views_max_count = args.views_max_count
+    views_playback_threshold = args.views_playback_threshold
+    views_after = None
+    views_before = None
+    if args.added_after:
+        added_after = datetime.strptime(args.added_after, '%Y-%m-%d').date()
+    if args.added_before:
+        added_before = datetime.strptime(args.added_before, '%Y-%m-%d').date()
+    if args.views_after:
+        views_after = datetime.strptime(args.views_after, '%Y-%m-%d').date()
+    if args.views_before:
+        views_before = datetime.strptime(args.views_before, '%Y-%m-%d').date()
+
+    if not any((views_max_count, added_after, added_before)):
+        raise MisconfiguredError(
+            'At least one filter ("--added-after", "--added-before", '
+            '"--views-max-count") is required.'
+        )
+    safe_end_date = today - timedelta(days=1)
+    if views_max_count is None:
+        views_playback_threshold = None
+        views_after = None
+        views_before = None
+    elif views_max_count < 0:
+        raise MisconfiguredError('If given, "--views-max-count" must be >= 0.')
+    elif (
+        not views_after or views_after > safe_end_date
+        or not views_before or views_before > safe_end_date
+    ):
+        raise MisconfiguredError(
+            'Both "--views-after" or "--views-before" must be given with "--views-max-count" '
+            'to prevent deleting newer videos for which stats may not have been computed yet.'
+            f'It must be at most {safe_end_date.strftime("%Y-%m-%d")}'
+        )
+
+    skip_categories = args.skip_categories or ['do not delete']
 
     if args.test_email_template:
         html_template, plain_template = _get_templates(
@@ -589,27 +737,37 @@ def delete_old_medias(sys_args):
             speaker_email=args.fallback_email,
             medias=DUMMY_MEDIAS,
             delete_date=delete_date,
-            skip_category=skip_category,
+            skip_categories=skip_categories,
             html_template=html_template,
             plain_template=plain_template,
             email_subject_template=args.email_subject_template,
         )
         logger.info(message)
     else:
-        medias = _get_old_medias(msc, added_before_date, skip_category)
-        if delete_date > today:
-            _warn_speakers_about_upcoming_deletion(
+        medias = _get_medias(
+            msc,
+            added_after=added_after,
+            added_before=added_before,
+            views_max_count=views_max_count,
+            views_playback_threshold=views_playback_threshold,
+            views_after=views_after,
+            views_before=views_before,
+            skip_categories=skip_categories,
+        )
+        if delete_date > today or args.send_email_on_deletion:
+            _warn_speakers_about_deletion(
                 msc,
                 medias,
                 delete_date=delete_date,
-                skip_category=skip_category,
+                skip_categories=skip_categories,
                 html_email_template=args.html_email_template,
                 plain_email_template=args.plain_email_template,
                 email_subject_template=args.email_subject_template,
+                fallback_to_channel_manager=args.fallback_to_channel_manager,
                 fallback_email=args.fallback_email,
                 apply=args.apply,
             )
-        else:
+        if delete_date <= today:
             _delete_medias(msc, medias, apply=args.apply)
 
 
