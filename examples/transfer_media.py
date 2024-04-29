@@ -106,7 +106,7 @@ if __name__ == "__main__":
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__.strip())
 
     parser.add_argument(
         "--conf-src",
@@ -121,7 +121,7 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument(
-        "--temp_path",
+        "--temp-path",
         help="Temporary folder to use.",
         default=Path("."),
         type=Path,
@@ -136,10 +136,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        msc_src = MediaServerClient(args.conf_src)
-
         media_download_dir = args.temp_path / args.oid
         media_download_dir.mkdir(parents=True)
+
+        msc_src = MediaServerClient(args.conf_src)
 
         zip_path = backup_media(msc_src, args.oid, media_download_dir)
         print(f"media {args.oid} downloaded to {zip_path}")
