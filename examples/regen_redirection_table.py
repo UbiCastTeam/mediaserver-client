@@ -9,36 +9,19 @@ import sys
 
 
 def regen_redirections_file(msc):
-    more = True
-    start = ''
     redir_count = 0
-    index = 0
-    with open('redirections.csv', 'w') as f:
-        while more:
-            print('//// Making request on latest (start=%s)' % start)
-            response = msc.api('latest/', params=dict(start=start, content='v', count=20))
-            for item in response['items']:
-                oid = item['oid']
-                index += 1
-                data = msc.api(
-                    'medias/get/',
-                    method='get',
-                    params={
-                        'oid': oid,
-                        'full': 'yes',
-                    },
-                    timeout=300
-                )['info']
-                if data.get('external_ref'):
-                    line = f'{data["external_ref"]},{oid}'
-                    print(line)
-                    f.write(line + '\n')
-                    redir_count += 1
+    videos = msc.get_catalog(fmt='flat').get('videos', list())
+    filename = 'redirections.csv'
+    with open(filename, 'w') as f:
+        for video in videos:
+            external_ref = video.get('external_ref')
+            if external_ref:
+                line = f'{external_ref},{video["oid"]}'
+                print(line)
+                f.write(line + '\n')
+                redir_count += 1
 
-            start = response['max_date']
-            more = response['more']
-
-    print(f'Wrote {redir_count} redirections')
+    print(f'Wrote {redir_count} redirections to {filename}')
 
 
 if __name__ == '__main__':
