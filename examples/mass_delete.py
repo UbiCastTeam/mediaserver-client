@@ -1,4 +1,26 @@
 #!/usr/bin/env python3
+"""
+Delete all media described by oids in a CSV file (first column)
+
+WARNING: ENABLE THE RECYCLE-BIN ON YOUR PLATFORM BEFORE RUNNING THIS SCRIPT.
+IF YOU DON'T, OR IF YOU USE THE "--permanent" FLAG, YOUR ACTIONS WILL BE IRREVERSIBLE.
+
+By default, the script just reports the space that would be freed (no actual
+deletions).
+
+$ python examples/mass_delete.py --conf ubicast.json --csv media.csv
+v12345649684
+...
+Deleting 7 media would have freed 4.1 GB
+
+To actually perform the deletions, pass "--apply":
+$ python examples/mass_delete.py --conf ubicast.json --csv media.csv --apply
+
+If you've made a mistake, assuming the recycle-bin is active on your platform,
+and you didn't use "--permanent", you can revert your actions by manually selecting
+and restoring content from the recycle-bin.
+"""
+
 import argparse
 import os
 from pathlib import Path
@@ -27,7 +49,7 @@ def format_size(size_bytes: int) -> str:
 def _delete_medias(
     msc: MediaServerClient,
     oids: list[str],
-    force: bool = False,
+    permanent: bool = False,
     apply: bool = False
 ):
     mode = '[APPLY] ' if apply else '[DRY-RUN] '
@@ -46,9 +68,9 @@ def _delete_medias(
     if apply:
         print(f'{mode}Starting deletion of {len(to_delete)} catalog objects.')
         params = {'oids': list(to_delete.keys())}
-        if force:
+        if permanent:
             params['force'] = 'yes'
-        deleted_statuses = msc.api('catalog/bulk_delete/', method='post', data=params)['statuses']
+        deleted_statuses = msc.api('catalog/bulk-delete/', method='post', data=params)['statuses']
 
         deleted_count = 0
         deleted_size = 0
@@ -72,27 +94,7 @@ def _delete_medias(
 def delete_medias_from_csv(sys_args):
     parser = argparse.ArgumentParser(
         'mass_delete',
-        description='''
-            Delete all media described by oids in a CSV file (first column)
-
-            WARNING: ENABLE THE RECYCLE-BIN ON YOUR PLATFORM BEFORE RUNNING THIS SCRIPT.
-            IF YOU DON'T, OR IF YOU USE THE "--force" FLAG, YOUR ACTIONS WILL BE IRREVERSIBLE.
-
-            By default, the script just reports the space that would be freed (no actual
-            deletions).
-
-            $ python examples/mass_delete.py --conf ubicast.json --csv media.csv
-            v12345649684
-            ...
-            Deleting 7 media would have freed 4.1 GB
-
-            To actually perform the deletions, pass "--apply":
-            $ python examples/mass_delete.py --conf ubicast.json --csv media.csv --apply
-
-            If you've made a mistake, assuming the recycle-bin is active on your platform
-            and you didn't use "--force", you can revert your actions by manually selecting
-            and restoring content from the recycle-bin.
-        ''',
+        description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -115,7 +117,7 @@ def delete_medias_from_csv(sys_args):
         type=str
     )
     parser.add_argument(
-        '--force',
+        '--permanent',
         action='store_true',
         default=False,
         help='Bypass the recycle-bin. With this flag, videos will be deleted without the '
@@ -161,7 +163,7 @@ def delete_medias_from_csv(sys_args):
             f'A report of the storage used by the {len(oids)} medias in your CSV will be '
             'generated.'
         )
-    _delete_medias(msc, oids, force=args.force, apply=args.apply)
+    _delete_medias(msc, oids, permanent=args.permanent, apply=args.apply)
 
 
 if __name__ == '__main__':
