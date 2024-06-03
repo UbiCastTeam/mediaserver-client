@@ -11,10 +11,10 @@ import sys
 import time
 
 try:
-    from ms_client.client import MediaServerClient
+    from ms_client.client import MediaServerClient, MediaServerRequestError
 except ModuleNotFoundError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from ms_client.client import MediaServerClient
+    from ms_client.client import MediaServerClient, MediaServerRequestError
 
 
 def get_human_readable_size(num: int, suffix: str = "B") -> str:
@@ -108,11 +108,19 @@ def delete_hls_resources(
             if apply:
                 print(f"Deleting resources of oid {oid}: {files}")
                 params = {"oid": oid, "names": ",".join(files)}
-                r = msc.api("/medias/resources-delete/", method="post", data=params, timeout=180)
-                if not r["success"]:
-                    print(f"Error when deleting {oid}: {r['message']}")
+                try:
+                    r = msc.api("/medias/resources-delete/", method="post", data=params, timeout=180)
+                except MediaServerRequestError as err:
+                    if 'read timeout=' in str(err):
+                        print(f'The deletion request timed out for "{oid}", this error can be ignored.')
+                        deleted_resources_count += len(files)
+                    else:
+                        print(f"Error when deleting resources of {oid}: {r['message']}")
                 else:
-                    deleted_resources_count += len(files)
+                    if not r["success"]:
+                        print(f"Failure when deleting resources of {oid}: {r['message']}")
+                    else:
+                        deleted_resources_count += len(files)
             else:
                 print(f"[Dry Run] Would delete resources of oid {oid}: {files}")
         if apply:

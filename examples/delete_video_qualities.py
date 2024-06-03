@@ -7,18 +7,21 @@ All best mp4 or mp3 files are preserved.
 
 import argparse
 import csv
+import logging
 import os
 import re
 import sys
 import time
 
 try:
-    from ms_client.client import MediaServerClient
+    from ms_client.client import MediaServerClient, MediaServerRequestError
 except ModuleNotFoundError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from ms_client.client import MediaServerClient
+    from ms_client.client import MediaServerClient, MediaServerRequestError
 
 DELETED_STATS = {'count': 0, 'size': 0}
+
+logger = logging.getLogger(__name__)
 
 
 def remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete=False):
@@ -31,9 +34,8 @@ def remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_t
             formats_to_delete,
             enable_delete=enable_delete)
     except Exception as e:
-        print(f'Error: {e}, retrying in 30s')
+        logger.error(f'Error: {e}, retrying in 30s.')
         time.sleep(30)
-        print('Retrying')
         _remove_resources(
             msc,
             video_oid,
@@ -44,7 +46,7 @@ def remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_t
 
 
 def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete=False):
-    print(f'-- Media {video_oid} "{video_title}"')
+    logger.info(f'-- Media {video_oid} "{video_title}"')
 
     # Update resources from video media
     resources = msc.api('medias/resources-check/', method='post', data=dict(oid=video_oid))
@@ -59,7 +61,7 @@ def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_
     )]
 
     if len(resources) <= 1:
-        print('The media has only one or zero resource, nothing to delete.')
+        logger.info('The media has only one or zero resource, nothing to delete.')
         return
 
     # Get reference format depending on media qualities
@@ -80,9 +82,9 @@ def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_
 
     # Always keep the reference or the best resource but never a m3u8
     ref_res = resources.pop(0)
-    print(f'Reference file is: {ref_res["path"]} and will not be deleted')
+    logger.info(f'Reference file is "{ref_res["path"]}" and will not be deleted.')
     if ref_res['path'].endswith('.m3u8'):
-        print('Warning: The reference is a m3u8 file, media skipped.')
+        logger.info('Warning: The reference is a m3u8 file, media skipped.')
         return
 
     # Filter resources
@@ -92,7 +94,7 @@ def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_
         filtered_resources = resources
 
     if not filtered_resources:
-        print('The media has no matching resources to delete.')
+        logger.info('The media has no matching resources to delete.')
         return
 
     del_count = 0
@@ -105,23 +107,29 @@ def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_
                     msc.api(
                         'medias/resources-delete/',
                         method='post',
-                        data=dict(oid=video_oid, names=res['path'])
+                        data=dict(oid=video_oid, names=res['path']),
+                        timeout=180
                     )
                     del_count += 1
-                except Exception as err:
-                    print(f'Failed to delete resource "{res["path"]}": {str(err).strip()}')
+                except MediaServerRequestError as err:
+                    if 'read timeout=' in str(err):
+                        logger.warning(
+                            f'The deletion request timed out for "{res["path"]}" from media "{video_title}",'
+                            ' this error can be ignored.')
+                    else:
+                        logger.error(f'Failed to delete resource "{res["path"]}": {str(err).strip()}')
                 else:
-                    print(f'Resource "{res["path"]}" from media "{video_title}" has been deleted successully.')
+                    logger.info(f'Resource "{res["path"]}" from media "{video_title}" has been deleted successully.')
             else:
-                print(f'[Dry Run] Resource "{res["path"]}" from media "{video_title}" would be deleted.')
+                logger.info(f'[Dry Run] Resource "{res["path"]}" from media "{video_title}" would be deleted.')
                 del_count += 1
     if not del_count:
-        print('Nothing to delete in this media.')
+        logger.info('Nothing to delete in this media.')
 
 
 def process_channel(msc, qualities_to_delete, formats_to_delete, channel_info, enable_delete=False):
     # Browse channels from channel parent
-    print(f'Getting content of channel {channel_info["oid"]} "{channel_info["title"]}".')
+    logger.info(f'Getting content of channel {channel_info["oid"]} "{channel_info["title"]}".')
     channel_items = msc.api(
         'channels/content/',
         method='get',
@@ -132,7 +140,7 @@ def process_channel(msc, qualities_to_delete, formats_to_delete, channel_info, e
     for entry in channel_items.get('channels', []):
         process_channel(msc, qualities_to_delete, formats_to_delete, entry, enable_delete=enable_delete)
 
-    print(f'// Checking videos in channel {channel_info["oid"]} "{channel_info["title"]}".')
+    logger.info(f'// Checking videos in channel {channel_info["oid"]} "{channel_info["title"]}".')
     # Get video informations
     for entry in channel_items.get('videos', []):
         remove_resources(msc, entry['oid'], entry['title'], qualities_to_delete, formats_to_delete, enable_delete)
@@ -152,9 +160,9 @@ def process_csv_file(msc, qualities_to_delete, formats_to_delete, csv_file, enab
             try:
                 # Get media title and check it exists
                 video_title = msc.api('medias/get/', params=dict(oid=video_oid))['info']['title']
-            except Exception as err:
-                print(f'-- Media {video_oid} ignored:')
-                print(f'Failed to get title of media: {str(err).strip()}')
+            except MediaServerRequestError as err:
+                logger.info(f'-- Media {video_oid} ignored:')
+                logger.info(f'Failed to get title of media: {str(err).strip()}')
             else:
                 remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete)
 
@@ -163,7 +171,7 @@ def check_resources(msc, qualities_to_delete, formats_to_delete, channel_oid, cs
     if csv_file:
         # Check if csv file exists
         if not os.path.exists(csv_file):
-            print('Invalid path for csv file.')
+            logger.info('Invalid path for csv file.')
             return 1
         process_csv_file(msc, qualities_to_delete, formats_to_delete, csv_file, enable_delete=enable_delete)
         return 0
@@ -171,11 +179,11 @@ def check_resources(msc, qualities_to_delete, formats_to_delete, channel_oid, cs
         # Check if channel oid exists
         try:
             channel_parent = msc.api('channels/get/', method='get', params=dict(oid=channel_oid))
-        except Exception as err:
-            print('Please enter a valid channel oid or check access permissions.')
-            print(f'Error when trying to get channel was: {str(err).strip()}')
+        except MediaServerRequestError as err:
+            logger.info('Please enter a valid channel oid or check access permissions.')
+            logger.info(f'Error when trying to get channel was: {str(err).strip()}')
             return 1
-        print(f'Parent Channel is "{channel_parent["info"]["title"]}".')
+        logger.info(f'Parent Channel is "{channel_parent["info"]["title"]}".')
         process_channel(
             msc,
             qualities_to_delete,
@@ -186,7 +194,7 @@ def check_resources(msc, qualities_to_delete, formats_to_delete, channel_oid, cs
     else:
         # Process all channels
         info = {'oid': '', 'title': 'root'}
-        print(f'Parent Channel is "{info["title"]}".')
+        logger.info(f'Parent Channel is "{info["title"]}".')
         process_channel(
             msc,
             qualities_to_delete,
@@ -281,8 +289,10 @@ if __name__ == '__main__':
 
     deleted_size_gb = int(DELETED_STATS['size'] / 1_000_000_000)
     if args.enable_delete:
-        print(f'Deleted {deleted_size_gb} GB ({DELETED_STATS["count"]} resources).')
+        logger.info(
+            f'Deleted {deleted_size_gb} GB ({DELETED_STATS["count"]} resources).')
     else:
-        print(f'Would have freed {deleted_size_gb} GB ({DELETED_STATS["count"]} resources) if run with "--delete".')
+        logger.info(
+            f'Would have freed {deleted_size_gb} GB ({DELETED_STATS["count"]} resources) if run with "--delete".')
 
     sys.exit(rc)
