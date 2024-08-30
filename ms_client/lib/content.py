@@ -109,7 +109,7 @@ def remove_all_content(client, timeout=None, max_retry=None):
 
 def get_catalog(client, fmt=Literal['flat', 'tree', 'csv']):
     version = client.get_server_version()
-    if version[0] >= 12 and version[1] >= 3:
+    if version >= (12, 3, 0):
         as_tree = (fmt == 'tree')
         api_fmt = 'csv' if fmt == 'csv' else 'json'
         catalog = client.api(
