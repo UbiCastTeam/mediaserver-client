@@ -165,7 +165,7 @@ class Stats:
             logging.debug(f"Skipping {row} because it was created after the end date")
             return
 
-        end_time = creation + timedelta(seconds=int(row["duration_s"]))
+        end_time = creation + timedelta(seconds=int(float(row["duration_s"])))
         origin = row["origin"]
         if origin.startswith("miris-box") or origin.startswith("easycast-"):
             day_code = f"{creation.year}-{creation.month}-{creation.day}"
@@ -208,7 +208,7 @@ class Stats:
         for media in self.media_list:
             origin = media["origin"]
             speaker_email = media["speaker_email"]
-            duration_seconds = int(media["duration_s"]) if media["duration_s"] else 0
+            duration_seconds = int(float(media["duration_s"])) if media["duration_s"] else 0
             size_bytes = int(media["storage_used"])
 
             try:
