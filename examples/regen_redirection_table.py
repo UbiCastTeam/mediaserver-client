@@ -6,6 +6,7 @@ external_ref, oid
 '''
 import os
 import sys
+import csv
 
 
 def regen_redirections_file(msc):
@@ -13,12 +14,11 @@ def regen_redirections_file(msc):
     videos = msc.get_catalog(fmt='flat').get('videos', list())
     filename = 'redirections.csv'
     with open(filename, 'w') as f:
+        writer = csv.writer(f, delimiter=";", quoting=csv.QUOTE_MINIMAL)
         for video in videos:
             external_ref = video.get('external_ref')
             if external_ref:
-                line = f'{external_ref},{video["oid"]}'
-                print(line)
-                f.write(line + '\n')
+                writer.writerow([external_ref, video["oid"]])
                 redir_count += 1
 
     print(f'Wrote {redir_count} redirections to {filename}')
