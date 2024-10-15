@@ -70,8 +70,8 @@ def run_test(args):
     if args.count > 1:
         logger.info(f'Copying file {args.count - 1} times in "{tmp_path}".')
         for i in range(1, args.count):
-            shutil.copy(tmp_path + '.m3u8', tmp_path + '/files-' + str(i))
-            files_list.append(tmp_path + '/files-' + str(i))
+            shutil.copy(tmp_path + '.m3u8', tmp_path + '/files-' + str(i) + '.ts')
+            files_list.append(tmp_path + '/files-' + str(i) + '.ts')
     files_list.append(tmp_path + '.m3u8')
 
     # Prepare arguments
