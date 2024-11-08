@@ -22,9 +22,9 @@ def unpublish_all_videos_after(msc, delay_days, apply):
             publish_date_obj = datetime.strptime(publish_date, '%Y-%m-%d %H:%M:%S')
             media_age = (datetime.now() - publish_date_obj).days
             if media_age >= delay_days:
-                unpublished.append(oid)
+                unpublished.append([oid, media_age])
     print(f'Found {len(unpublished)} to unpublish {unpublished}')
-    for oid in unpublished:
+    for oid, media_age in unpublished:
         if apply:
             print(f'Unpublishing {oid}')
             msc.api('medias/edit/', method='post', data={'validated': 'no', 'oid': oid})
