@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''
-Script to transcode and clean all videos from a MediaServer.
+Script that will automatically unpublish any content N days after it was initially published
 
 This script requires MediaServer >= 8.2.0.
 '''
