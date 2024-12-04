@@ -10,20 +10,29 @@ import sys
 from datetime import datetime
 
 
-def unpublish_all_videos_after(msc, delay_days, apply):
+def unpublish_all_videos_after(msc, args):
+    delay_days = args.delay_days
+    apply = args.apply
+    title_filter = args.title_filter
+
     unpublished = list()
     videos = msc.get_catalog(fmt='flat').get('videos', list())
     videos_count = len(videos)
     for index, item in enumerate(videos):
         oid = item['oid']
         print(f'// Media {index + 1}/{videos_count}: {oid}')
+
+        if title_filter:
+            if title_filter not in item['title']:
+                print(f"Skipping {oid} because title does not match")
+                continue
+
         publish_date = item.get('publish_date')
         if publish_date and item.get('validated'):
             publish_date_obj = datetime.strptime(publish_date, '%Y-%m-%d %H:%M:%S')
             media_age = (datetime.now() - publish_date_obj).days
             if media_age >= delay_days:
                 unpublished.append([oid, media_age])
-    print(f'Found {len(unpublished)} to unpublish {unpublished}')
     for oid, media_age in unpublished:
         if apply:
             print(f'Unpublishing {oid}')
@@ -32,6 +41,7 @@ def unpublish_all_videos_after(msc, delay_days, apply):
             print(
                 f'[Dry Run] Would unpublish {oid} because it is {media_age} days old (> {delay_days})'
             )
+    print(f'Found {len(unpublished)} media to unpublish')
 
 
 if __name__ == '__main__':
@@ -52,6 +62,12 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--title-filter',
+        type=str,
+        help='Only consider media whose title contain this string',
+    )
+
+    parser.add_argument(
         '--apply',
         action='store_true',
         default=False,
@@ -61,4 +77,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     msc = MediaServerClient(args.conf)
     msc.check_server()
-    unpublish_all_videos_after(msc, args.delay_days, args.apply)
+    unpublish_all_videos_after(msc, args)
