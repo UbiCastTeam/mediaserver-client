@@ -14,8 +14,7 @@ def format_seconds(seconds):
 
 
 def format_bytes(size):
-    # 2**10 = 1024
-    power = 2**10
+    power = 1000
     n = 0
     power_labels = {0: '', 1: 'kilo', 2: 'mega', 3: 'giga', 4: 'tera'}
     while size > power:
@@ -55,7 +54,7 @@ if __name__ == '__main__':
             all_resources_size[source_resolution] += storage
 
     print()
-    print('Source resolutions by duration :')
+    print('Source resolutions by duration:')
     all_resources_duration = dict(
         sorted(all_resources_duration.items(), key=lambda item: item[1], reverse=True)
     )
@@ -65,7 +64,7 @@ if __name__ == '__main__':
         print(f'{mode}: {format_seconds(duration)}, average size: {format_bytes(size_per_hour)} per hour')
 
     print()
-    print('Source resolutions by count :')
+    print('Source resolutions by count:')
     all_resources_count = dict(
         sorted(all_resources_count.items(), key=lambda item: item[1], reverse=True)
     )
@@ -73,7 +72,7 @@ if __name__ == '__main__':
         print(f'{mode}: {count}')
 
     print()
-    print('Source resolutions by size :')
+    print('Source resolutions by size:')
     all_resources_size = dict(
         sorted(all_resources_size.items(), key=lambda item: item[1], reverse=True)
     )
