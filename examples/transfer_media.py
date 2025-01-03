@@ -158,13 +158,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--redirections-file",
-        help="Path to file containing the previous oid and the new oid on each line",
-        default=Path("redirections.csv"),
-        type=Path,
-    )
-
-    parser.add_argument(
         "--root-channel", help="Optional root channel to move media into", type=str
     )
 
@@ -183,9 +176,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     msc_src = MediaServerClient(args.conf_src)
+    external_ref_prefix = "nudgis:" + msc_src.conf['SERVER_URL'].split('/')[2]
+
     msc_dest = MediaServerClient(args.conf_dest)
 
     oids = list()
+
     if args.oid_file and args.oid_file.is_file():
         print(f"Reading oids from {args.oid_file}")
         oids = args.oid_file.open().read().strip().split('\n')
@@ -209,6 +205,7 @@ if __name__ == "__main__":
         upload_args = {
             "file_path": zip_path,
             "progress_callback": print_progress,
+            "external_ref": f"{external_ref_prefix}:{oid}"
         }
         if args.root_channel:
             metadata = extract_metadata_from_zip(zip_path)
