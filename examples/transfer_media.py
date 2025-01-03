@@ -57,9 +57,10 @@ def backup_media(msc, oid, temp_path):
 
 
 def download_media_best_resource(msc, item, media_download_dir, file_prefix):
-    resources = msc.api("medias/resources-list/", params=dict(oid=item["oid"]))[
-        "resources"
-    ]
+    params = {
+        "oid": item["oid"],
+    }
+    resources = msc.api("medias/resources-list/", params=params)["resources"]
     resources.sort(key=lambda a: -a["file_size"])
     if not resources:
         print("Media has no resources.")
@@ -72,7 +73,7 @@ def download_media_best_resource(msc, item, media_download_dir, file_prefix):
     if not best_quality:
         raise Exception(f"Could not download any resource from list: {resources}")
 
-    print(f"Best quality file for video {item['oid']}: {best_quality['file']}")
+    print(f"Best quality file for video {item['oid']}: {best_quality['path']}")
     destination_resource = os.path.join(
         media_download_dir,
         "resource - %s - %sx%s.%s"
@@ -92,7 +93,7 @@ def download_media_best_resource(msc, item, media_download_dir, file_prefix):
         # download resource
         resource_url = msc.api(
             "download/",
-            params=dict(oid=item["oid"], url=best_quality["file"], redirect="no"),
+            params=dict(oid=item["oid"], url=best_quality["path"], redirect="no"),
         )["url"]
 
         print(f"Will download file to '{destination_resource}'.")
