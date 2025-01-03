@@ -11,6 +11,7 @@ import os
 import shutil
 import sys
 import zipfile
+import json
 from pathlib import Path
 
 import requests
@@ -111,6 +112,11 @@ def download_media_metadata(msc, item, media_download_dir, file_prefix):
     return str(path)
 
 
+def extract_metadata_from_zip(zip_path):
+    with zipfile.ZipFile(zip_path) as z:
+        return json.loads(z.read("metadata.json"))
+
+
 if __name__ == "__main__":
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
@@ -200,18 +206,25 @@ if __name__ == "__main__":
         def print_progress(progress):
             print(f"Uploading: {progress * 100:.1f}%", end="\r")
 
+        upload_args = {
+            "file_path": zip_path,
+            "progress_callback": print_progress,
+        }
+        if args.root_channel:
+            metadata = extract_metadata_from_zip(zip_path)
+            upload_args["channel"] = f"mscpath-{args.root_channel}/{metadata['path']}"
+
         if args.apply:
             print("Starting upload")
-            resp = msc_dest.add_media(
-                file_path=zip_path, progress_callback=print_progress
-            )
+            resp = msc_dest.add_media(**upload_args)
+            uploaded_oid = resp["oid"]
 
             if resp["success"]:
-                print(f"File {zip_path} upload finished, object id is {resp['oid']}")
+                print(f"File {zip_path} upload finished, object id is {uploaded_oid}")
             else:
                 print(f"Upload of {zip_path} failed: {resp}")
         else:
-            print(f"[Dry run] Would upload {zip_path}")
+            print(f"[Dry run] Would upload {zip_path} with {upload_args}")
 
         if args.delete_temp and media_download_dir.exists():
             print(f"Deleting {media_download_dir}")
