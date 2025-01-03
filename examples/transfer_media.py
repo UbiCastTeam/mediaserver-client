@@ -35,6 +35,12 @@ def backup_media(msc, oid, temp_path):
     if not oid.startswith("v"):
         raise Exception(f"oid {oid} is not a VOD")
 
+    finished_marker = temp_path / "finished.marker"
+    if finished_marker.is_file():
+        print(f"Skipping {temp_path} download: already done")
+        return Path(finished_marker.open().read())
+
+    media_download_dir.mkdir(parents=True)
     item = msc.api("medias/get/", params={"oid": oid})["info"]
     meta_path = download_media_metadata(msc, item, temp_path, oid)
     res_path = download_media_best_resource(msc, item, temp_path, oid)
@@ -43,6 +49,9 @@ def backup_media(msc, oid, temp_path):
     print(f"Embedding {res_path} into {meta_path}")
     zip_file.write(res_path, os.path.basename(res_path))
     zip_file.close()
+
+    finished_marker.open("w").write(meta_path)
+    print(f"media {oid} downloaded to {meta_path}")
     return meta_path
 
 
@@ -114,48 +123,96 @@ if __name__ == "__main__":
         required=True,
         type=str,
     )
+
     parser.add_argument(
         "--conf-dest",
         help="Path to the configuration file for the destination platform.",
         required=True,
         type=str,
     )
+
     parser.add_argument(
         "--temp-path",
         help="Temporary folder to use.",
-        default=Path("."),
+        default=Path("temp"),
         type=Path,
     )
+
     parser.add_argument(
-        "--oid", help="oid of the media to transfer", required=True, type=str
+        "--oid",
+        help="oid of the media to transfer, can be used multiple times",
+        type=str,
+        action='append',
     )
+
     parser.add_argument(
-        "--delete", help="Whether to keep the downloaded folder", action="store_true",
+        "--oid-file",
+        help="Path to file containing one oid per line",
+        type=Path,
+    )
+
+    parser.add_argument(
+        "--redirections-file",
+        help="Path to file containing the previous oid and the new oid on each line",
+        default=Path("redirections.csv"),
+        type=Path,
+    )
+
+    parser.add_argument(
+        "--root-channel", help="Optional root channel to move media into", type=str
+    )
+
+    parser.add_argument(
+        "--delete-temp",
+        help="Whether to keep the downloaded folder",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--apply",
+        help="Whether to apply changes",
+        action="store_true",
     )
 
     args = parser.parse_args()
 
-    try:
-        media_download_dir = args.temp_path / args.oid
-        media_download_dir.mkdir(parents=True)
+    msc_src = MediaServerClient(args.conf_src)
+    msc_dest = MediaServerClient(args.conf_dest)
 
-        msc_src = MediaServerClient(args.conf_src)
+    oids = list()
+    if args.oid_file and args.oid_file.is_file():
+        print(f"Reading oids from {args.oid_file}")
+        oids = args.oid_file.open().read().strip().split('\n')
+    if args.oid:
+        oids += args.oid
 
-        zip_path = backup_media(msc_src, args.oid, media_download_dir)
-        print(f"media {args.oid} downloaded to {zip_path}")
+    oid_count = len(oids)
+    if oid_count:
+        print(f"Found {oid_count} oids to transfer")
+    else:
+        sys.exit("No oids provided, exiting")
+
+    for index, oid in enumerate(oids):
+        print(f"Processing {index + 1}/{oid_count}")
+        media_download_dir = args.temp_path / oid
+        zip_path = backup_media(msc_src, oid, media_download_dir)
 
         def print_progress(progress):
             print(f"Uploading: {progress * 100:.1f}%", end="\r")
 
-        msc_dest = MediaServerClient(args.conf_dest)
-        print("Starting upload")
-        resp = msc_dest.add_media(file_path=zip_path, progress_callback=print_progress)
+        if args.apply:
+            print("Starting upload")
+            resp = msc_dest.add_media(
+                file_path=zip_path, progress_callback=print_progress
+            )
 
-        if resp["success"]:
-            print(f"File {zip_path} upload finished, object id is {resp['oid']}")
+            if resp["success"]:
+                print(f"File {zip_path} upload finished, object id is {resp['oid']}")
+            else:
+                print(f"Upload of {zip_path} failed: {resp}")
         else:
-            print(f"Upload of {zip_path} failed: {resp}")
-    finally:
-        if args.delete and media_download_dir.exists():
+            print(f"[Dry run] Would upload {zip_path}")
+
+        if args.delete_temp and media_download_dir.exists():
             print(f"Deleting {media_download_dir}")
             shutil.rmtree(media_download_dir)
