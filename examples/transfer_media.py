@@ -118,6 +118,30 @@ def extract_metadata_from_zip(zip_path):
         return json.loads(z.read("metadata.json"))
 
 
+def sync_group_permissions(msc_src, oid_src, msc_dst, oid_dst):
+    groups = msc_src.api(
+        "/perms/get/default/",
+        params={'oid': oid_src},
+    )["groups"]
+
+    edit_params = {"oid": oid_dst, "prefix": "reference"}
+    for g in groups:
+        ref = g["ref"]
+        for perm in ["can_access_media"]:
+            access_perms = g["permissions"][perm]
+            if access_perms.get("val") or access_perms.get("inherit_val"):
+                edit_params[f"{ref}-{perm}"] = "True"
+
+    print(f"Synchronizing access permissions with params {edit_params}")
+
+    r = msc_dst.api(
+        "/perms/edit/default/",
+        method="post",
+        data=edit_params
+    )
+    print(r)
+
+
 if __name__ == "__main__":
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
@@ -174,6 +198,12 @@ if __name__ == "__main__":
         action="store_true",
     )
 
+    parser.add_argument(
+        "--sync-perms",
+        help="Whether to synchronize access permissions at the default group level (only base groups are supported)",
+        action="store_true",
+    )
+
     args = parser.parse_args()
 
     msc_src = MediaServerClient(args.conf_src)
@@ -181,24 +211,24 @@ if __name__ == "__main__":
 
     msc_dest = MediaServerClient(args.conf_dest)
 
-    oids = list()
+    oids_src = list()
 
     if args.oid_file and args.oid_file.is_file():
         print(f"Reading oids from {args.oid_file}")
-        oids = args.oid_file.open().read().strip().split('\n')
+        oids_src = args.oid_file.open().read().strip().split('\n')
     if args.oid:
-        oids += args.oid
+        oids_src += args.oid
 
-    oid_count = len(oids)
-    if oid_count:
-        print(f"Found {oid_count} oids to transfer")
+    oid_src_count = len(oids_src)
+    if oid_src_count:
+        print(f"Found {oid_src_count} oids to transfer")
     else:
         sys.exit("No oids provided, exiting")
 
-    for index, oid in enumerate(oids):
-        print(f"Processing {index + 1}/{oid_count}")
-        media_download_dir = args.temp_path / oid
-        zip_path = backup_media(msc_src, oid, media_download_dir)
+    for index, oid_src in enumerate(oids_src):
+        print(f"Processing {index + 1}/{oid_src_count}")
+        media_download_dir = args.temp_path / oid_src
+        zip_path = backup_media(msc_src, oid_src, media_download_dir)
 
         def print_progress(progress):
             print(f"Uploading: {progress * 100:.1f}%", end="\r")
@@ -206,7 +236,7 @@ if __name__ == "__main__":
         upload_args = {
             "file_path": zip_path,
             "progress_callback": print_progress,
-            "external_ref": f"{external_ref_prefix}:{oid}"
+            "external_ref": f"{external_ref_prefix}:{oid_src}"
         }
         if args.root_channel:
             metadata = extract_metadata_from_zip(zip_path)
@@ -215,10 +245,13 @@ if __name__ == "__main__":
         if args.apply:
             print("Starting upload")
             resp = msc_dest.add_media(**upload_args)
-            uploaded_oid = resp["oid"]
+            oid_dest = resp["oid"]
+
+            if args.sync_perms:
+                sync_group_permissions(msc_src, oid_src, msc_dest, oid_dest)
 
             if resp["success"]:
-                print(f"File {zip_path} upload finished, object id is {uploaded_oid}")
+                print(f"File {zip_path} upload finished, object id is {oid_dest}")
             else:
                 print(f"Upload of {zip_path} failed: {resp}")
         else:
