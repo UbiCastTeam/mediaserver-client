@@ -290,6 +290,11 @@ if __name__ == "__main__":
 
     msc_dest = MediaServerClient(args.conf_dest)
 
+    dest_videos = msc_dest.get_catalog(fmt='flat').get('videos', list())
+    dest_external_refs = dict()
+    for v in dest_videos:
+        dest_external_refs[v["external_ref"]] = v["oid"]
+
     oids_src = list()
 
     if args.oid_file and args.oid_file.is_file():
@@ -312,10 +317,15 @@ if __name__ == "__main__":
         def print_progress(progress):
             print(f"Uploading: {progress * 100:.1f}%", end="\r")
 
+        external_ref = f"{external_ref_prefix}:{oid_src}"
+        if oid_dst := dest_external_refs.get(external_ref):
+            print(f"Media {external_ref} already uploaded as {oid_dst}, skipping source media {oid_src}")
+            continue
+
         upload_args = {
             "file_path": zip_path,
             "progress_callback": print_progress,
-            "external_ref": f"{external_ref_prefix}:{oid_src}",
+            "external_ref": external_ref,
         }
 
         metadata = extract_metadata_from_zip(zip_path)
