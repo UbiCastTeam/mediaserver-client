@@ -134,12 +134,77 @@ def sync_group_permissions(msc_src, oid_src, msc_dst, oid_dst):
 
     print(f"Synchronizing access permissions with params {edit_params}")
 
-    r = msc_dst.api(
-        "/perms/edit/default/",
-        method="post",
-        data=edit_params
-    )
+    r = msc_dst.api("/perms/edit/default/", method="post", data=edit_params)
     print(r)
+
+
+def get_personal_channel(msc_dest, speaker, subchannel_title, apply=False):
+    speaker_email = speaker['email']
+
+    users = msc_dest.api(
+        "users/",
+        params={
+            "search": speaker_email,
+            "search_exact": "yes",
+            "search_in": "email",
+        },
+    ).get("users")
+
+    user_id = None
+    if len(users) == 0:
+        print(f"No user found for email {speaker_email}, leaving content at original location")
+    else:
+        user_id = users[0]["id"]
+
+    if user_id:
+        if not apply:
+            print(f"[Dry run] Would create personal channel for {speaker_email}, returning fake oid")
+            return "fakeoid"
+        else:
+            try:
+                # WARNING: this call may create the channel, so we cannot run it in dry run mode
+                print(f"Searching for personal channel of user {speaker_email} with id {user_id}")
+                oid = msc_dest.api("channels/personal/", params={"id": user_id}).get("oid")
+            except Exception as e:
+                if e.status_code == 403:
+                    print(
+                        f"Granting permission to own a personal channel to user with id {user_id}"
+                    )
+                    data = {
+                        "type": "user",
+                        "id": user_id,
+                        "can_have_personal_channel": "True",
+                        "can_create_media": "True",
+                    }
+                    msc_dest.api("perms/edit/", method="post", data=data)
+                    oid = msc_dest.api("channels/personal/", params={"id": user_id}).get("oid")
+
+            # create subchannel
+            try:
+                oid = (
+                    msc_dest.api(
+                        "channels/get/",
+                        params={"title": subchannel_title, "parent": oid},
+                    )
+                    .get("info", {})
+                    .get("oid")
+                )
+            except Exception as e:
+                if e.status_code == 404:
+                    print(
+                        f"Creating subchannel {subchannel_title} in personal channel of user {user_id}"
+                    )
+                    oid = msc_dest.api(
+                        "/channels/add/",
+                        method="post",
+                        data={"parent": oid, "title": subchannel_title},
+                    )["oid"]
+                else:
+                    print(
+                        f"Failed to create subchannel in personal channel of user {user_id}: {e}"
+                    )
+                    oid = None
+            return oid
 
 
 if __name__ == "__main__":
@@ -187,8 +252,21 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--personal-channels-root",
+        help="Name of the personal channel in the source platform",
+        default="Chaînes personnelles",
+        type=str,
+    )
+
+    parser.add_argument(
         "--delete-temp",
         help="Whether to keep the downloaded folder",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--migrate-personal-channels",
+        help="Whether to migrate personal content in a subfolder of the personal channel",
         action="store_true",
     )
 
@@ -207,7 +285,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     msc_src = MediaServerClient(args.conf_src)
-    external_ref_prefix = "nudgis:" + msc_src.conf['SERVER_URL'].split('/')[2]
+    src_domain = msc_src.conf['SERVER_URL'].split('/')[2]
+    external_ref_prefix = f"nudgis:{src_domain}"
 
     msc_dest = MediaServerClient(args.conf_dest)
 
@@ -236,11 +315,24 @@ if __name__ == "__main__":
         upload_args = {
             "file_path": zip_path,
             "progress_callback": print_progress,
-            "external_ref": f"{external_ref_prefix}:{oid_src}"
+            "external_ref": f"{external_ref_prefix}:{oid_src}",
         }
-        if args.root_channel:
-            metadata = extract_metadata_from_zip(zip_path)
-            upload_args["channel"] = f"mscpath-{args.root_channel}/{metadata['path']}"
+
+        metadata = extract_metadata_from_zip(zip_path)
+        src_path = metadata['path']
+
+        is_personal_channel = False
+        if args.migrate_personal_channels:
+            if args.personal_channels_root in src_path:
+                is_personal_channel = True
+            speaker = metadata["speaker"]
+            subchannel_title = f"Migration {src_domain}"
+            personal_channel_oid = get_personal_channel(msc_dest, speaker, subchannel_title, apply=args.apply)
+            if personal_channel_oid is not None:
+                upload_args["channel"] = personal_channel_oid
+
+        if not upload_args.get("channel") and args.root_channel:
+            upload_args["channel"] = f"mscpath-{args.root_channel}/{src_path}"
 
         if args.apply:
             print("Starting upload")
