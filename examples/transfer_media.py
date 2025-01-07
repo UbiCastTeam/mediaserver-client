@@ -73,7 +73,7 @@ def download_media_best_resource(msc, item, media_download_dir, file_prefix):
     if not best_quality:
         raise Exception(f'Could not download any resource from list: {resources}')
 
-    print(f'Best quality file for video {item['oid']}: {best_quality['path']}')
+    print(f'Best quality file for video {item["oid"]}: {best_quality["path"]}')
     destination_resource = os.path.join(
         media_download_dir,
         'resource - %s - %sx%s.%s'
