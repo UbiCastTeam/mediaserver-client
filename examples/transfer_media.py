@@ -269,6 +269,13 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--personal-subchannel',
+        help='Name of the subchannel of the personal channel in the target',
+        default='Migration',
+        type=str,
+    )
+
+    parser.add_argument(
         '--delete-temp',
         help='Whether to keep the downloaded folder',
         action='store_true',
@@ -348,7 +355,7 @@ if __name__ == '__main__':
             if args.personal_channels_root in src_path:
                 is_personal_channel = True
             speaker = metadata['speaker']
-            subchannel_title = f'Migration {src_domain}'
+            subchannel_title = args.personal_subchannel
             personal_channel_oid = get_personal_channel(
                 msc_dest, speaker, subchannel_title, apply=args.apply
             )
