@@ -345,6 +345,7 @@ if __name__ == '__main__':
             'file_path': zip_path,
             'progress_callback': print_progress,
             'external_ref': external_ref,
+            'own_media': 'no',
         }
 
         metadata = extract_metadata_from_zip(zip_path)
