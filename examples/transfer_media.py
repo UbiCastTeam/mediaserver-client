@@ -332,11 +332,6 @@ if __name__ == '__main__':
 
     for index, oid_src in enumerate(oids_src):
         print(f'Processing {index + 1}/{oid_src_count}')
-        media_download_dir = args.temp_path / oid_src
-        zip_path = backup_media(msc_src, oid_src, media_download_dir)
-
-        def print_progress(progress):
-            print(f'Uploading: {progress * 100:.1f}%', end='\r')
 
         external_ref = f'{external_ref_prefix}:{oid_src}'
         if oid_dst := dest_external_refs.get(external_ref):
@@ -344,6 +339,12 @@ if __name__ == '__main__':
                 f'Media {external_ref} already uploaded as {oid_dst}, skipping source media {oid_src}'
             )
             continue
+
+        media_download_dir = args.temp_path / oid_src
+        zip_path = backup_media(msc_src, oid_src, media_download_dir)
+
+        def print_progress(progress):
+            print(f'Uploading: {progress * 100:.1f}%', end='\r')
 
         upload_args = {
             'file_path': zip_path,
