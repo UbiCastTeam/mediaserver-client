@@ -356,7 +356,7 @@ if __name__ == '__main__':
         src_path = metadata['path']
 
         is_personal_channel = False
-        if args.migrate_personal_channels:
+        if args.migrate_personal_channels and metadata.get('speaker'):
             if args.personal_channels_root in src_path:
                 is_personal_channel = True
             speaker = metadata['speaker']
