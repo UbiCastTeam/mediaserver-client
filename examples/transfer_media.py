@@ -29,6 +29,7 @@ def download_file(url, local_filename, verify=True):
                     f'Downloading {(100 * downloaded_size / total_size):.1f}%', end='\r'
                 )
                 f.write(chunk)
+    print('Download finished')
     return local_filename
 
 
@@ -258,7 +259,10 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '--root-channel', help='Optional root channel to move media into', type=str
+        '--root-channel',
+        help='Optional root channel to move media into',
+        type=str,
+        required=True,
     )
 
     parser.add_argument(
