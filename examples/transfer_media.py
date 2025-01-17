@@ -140,21 +140,24 @@ def sync_group_permissions(msc_src, oid_src, msc_dst, oid_dst):
 
 
 def get_personal_channel(msc_dest, speaker, subchannel_title, apply=False):
-    speaker_email = speaker['email']
-
-    users = msc_dest.api(
-        'users/',
-        params={
-            'search': speaker_email,
-            'search_exact': 'yes',
-            'search_in': 'email',
-        },
-    ).get('users')
-
+    users = list()
     user_id = None
+
+    if speaker.get('email'):
+        speaker_email = speaker['email']
+
+        users = msc_dest.api(
+            'users/',
+            params={
+                'search': speaker_email,
+                'search_exact': 'yes',
+                'search_in': 'email',
+            },
+        ).get('users')
+
     if len(users) == 0:
         print(
-            f'No user found for email {speaker_email}, leaving content at original location'
+            f'No user found for speaker {speaker}, leaving content at original location'
         )
     else:
         user_id = users[0]['id']
@@ -330,6 +333,10 @@ if __name__ == '__main__':
     else:
         sys.exit('No oids provided, exiting')
 
+    failed = list()
+    skipped = list()
+    done = list()
+
     for index, oid_src in enumerate(oids_src):
         print(f'Processing {index + 1}/{oid_src_count}')
 
@@ -338,10 +345,17 @@ if __name__ == '__main__':
             print(
                 f'Media {external_ref} already uploaded as {oid_dst}, skipping source media {oid_src}'
             )
+            skipped.append(oid_src)
             continue
 
         media_download_dir = args.temp_path / oid_src
-        zip_path = backup_media(msc_src, oid_src, media_download_dir)
+        try:
+            zip_path = backup_media(msc_src, oid_src, media_download_dir)
+        except Exception as e:
+            error = f"Failed to backup media {oid_src}: {e}, ignoring for now"
+            print(error)
+            failed.append(error)
+            continue
 
         def print_progress(progress):
             print(f'Uploading: {progress * 100:.1f}%', end='\r')
@@ -389,3 +403,8 @@ if __name__ == '__main__':
         if args.delete_temp and media_download_dir.exists():
             print(f'Deleting {media_download_dir}')
             shutil.rmtree(media_download_dir)
+
+        done.append(oid_src)
+
+    print(f"Uploaded {len(done)}, skipped {len(skipped)}, failed {len(failed)} media")
+    print('\n'.join(failed))
