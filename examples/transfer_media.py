@@ -387,16 +387,22 @@ if __name__ == '__main__':
 
         if args.apply:
             print('Starting upload')
-            resp = msc_dest.add_media(**upload_args)
-            oid_dest = resp['oid']
+            try:
+                resp = msc_dest.add_media(**upload_args)
+                oid_dest = resp['oid']
 
-            if args.sync_perms:
-                sync_group_permissions(msc_src, oid_src, msc_dest, oid_dest)
+                if args.sync_perms:
+                    sync_group_permissions(msc_src, oid_src, msc_dest, oid_dest)
 
-            if resp['success']:
-                print(f'File {zip_path} upload finished, object id is {oid_dest}')
-            else:
-                print(f'Upload of {zip_path} failed: {resp}')
+                if resp['success']:
+                    print(f'File {zip_path} upload finished, object id is {oid_dest}')
+                else:
+                    print(f'Upload of {zip_path} failed: {resp}')
+            except Exception as e:
+                if "504" in str(e):
+                    print(f"Timeout error, perms are probably wrong: {e}")
+                else:
+                    raise e
         else:
             print(f'[Dry run] Would upload {zip_path} with {upload_args}')
 
