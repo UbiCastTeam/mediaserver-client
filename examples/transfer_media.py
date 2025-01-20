@@ -119,26 +119,6 @@ def extract_metadata_from_zip(zip_path):
         return json.loads(z.read('metadata.json'))
 
 
-def sync_group_permissions(msc_src, oid_src, msc_dst, oid_dst):
-    groups = msc_src.api(
-        '/perms/get/default/',
-        params={'oid': oid_src},
-    )['groups']
-
-    edit_params = {'oid': oid_dst, 'prefix': 'reference'}
-    for g in groups:
-        ref = g['ref']
-        for perm in ['can_access_media']:
-            access_perms = g['permissions'][perm]
-            if access_perms.get('val') or access_perms.get('inherit_val'):
-                edit_params[f'{ref}-{perm}'] = 'True'
-
-    print(f'Synchronizing access permissions with params {edit_params}')
-
-    r = msc_dst.api('/perms/edit/default/', method='post', data=edit_params)
-    print(r)
-
-
 def get_personal_channel(msc_dest, speaker, subchannel_title, apply=False):
     users = list()
     user_id = None
@@ -300,12 +280,6 @@ if __name__ == '__main__':
         action='store_true',
     )
 
-    parser.add_argument(
-        '--sync-perms',
-        help='Whether to synchronize access permissions at the default group level (only base groups are supported)',
-        action='store_true',
-    )
-
     args = parser.parse_args()
 
     msc_src = MediaServerClient(args.conf_src)
@@ -391,16 +365,14 @@ if __name__ == '__main__':
                 resp = msc_dest.add_media(**upload_args)
                 oid_dest = resp['oid']
 
-                if args.sync_perms:
-                    sync_group_permissions(msc_src, oid_src, msc_dest, oid_dest)
-
                 if resp['success']:
                     print(f'File {zip_path} upload finished, object id is {oid_dest}')
                 else:
                     print(f'Upload of {zip_path} failed: {resp}')
             except Exception as e:
                 if "504" in str(e):
-                    print(f"Timeout error, perms are probably wrong: {e}")
+                    # this happens with large zip files (but they get processed), let's ignore it
+                    pass
                 else:
                     raise e
         else:
