@@ -326,7 +326,7 @@ if __name__ == '__main__':
         try:
             zip_path = backup_media(msc_src, oid_src, media_download_dir)
         except Exception as e:
-            error = f"Failed to backup media {oid_src}: {e}, ignoring for now"
+            error = f'Failed to backup media {oid_src}: {e}, ignoring for now'
             print(error)
             failed.append(error)
             continue
@@ -344,10 +344,10 @@ if __name__ == '__main__':
         metadata = extract_metadata_from_zip(zip_path)
         src_path = metadata['path']
 
-        is_personal_channel = False
+        in_personal_channel = False
         if args.migrate_personal_channels and metadata.get('speaker'):
             if args.personal_channels_root in src_path:
-                is_personal_channel = True
+                in_personal_channel = True
             speaker = metadata['speaker']
             subchannel_title = args.personal_subchannel
             personal_channel_oid = get_personal_channel(
@@ -370,8 +370,10 @@ if __name__ == '__main__':
                 else:
                     print(f'Upload of {zip_path} failed: {resp}')
             except Exception as e:
-                if "504" in str(e):
-                    # this happens with large zip files (but they get processed), let's ignore it
+                if '504' in str(e):
+                    print(
+                        f'File {zip_path} upload finished but got code 504 (timeout); assuming it was processed.'
+                    )
                     pass
                 else:
                     raise e
@@ -384,5 +386,5 @@ if __name__ == '__main__':
 
         done.append(oid_src)
 
-    print(f"Uploaded {len(done)}, skipped {len(skipped)}, failed {len(failed)} media")
+    print(f'Uploaded {len(done)}, skipped {len(skipped)}, failed {len(failed)} media')
     print('\n'.join(failed))
