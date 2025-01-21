@@ -230,7 +230,7 @@ def download_media_best_resource(msc, item, media_backup_dir, file_prefix, local
         # download resource
         url_resource = msc.api(
             'download/',
-            params=dict(oid=item['oid'], url=best_quality['file'], redirect='no')
+            params=dict(oid=item['oid'], url=best_quality['path'], redirect='no')
         )['url']
         if os.path.exists(destination_resource):
             local_size = os.path.getsize(destination_resource)
