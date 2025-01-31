@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Script to generate a JSON file for metadata from all media in the database. The primary nodes are channels.
 """
