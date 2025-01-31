@@ -305,3 +305,28 @@ class MediaServerClient():
 
     def get_catalog(self, fmt=Literal['flat', 'tree', 'csv']):
         return content_lib.get_catalog(self, fmt=fmt)
+
+    def get_best_download_url(self, oid):
+        resources = self.api('medias/resources-list/', params={'oid': oid})['resources']
+        resources.sort(key=lambda a: -a['file_size'])
+        if not resources:
+            logger.info(f'Media {oid} has no resources.')
+            return
+        best_quality = None
+        for r in resources:
+            if r['format'] != 'm3u8':
+                best_quality = r
+                break
+        if not best_quality:
+            raise Exception(f'Could not download any resource from list for {oid}: {resources}')
+
+        if best_quality['format'] in ('youtube', 'embed'):
+            return best_quality['file']
+        else:
+            # download resource
+            resource_url = self.api(
+                'download/',
+                params=dict(oid=oid, url=best_quality['path'], redirect='no'),
+            )['url']
+            logging.debug(f"Best resource for {oid}: {resource_url}")
+            return resource_url
