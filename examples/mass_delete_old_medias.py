@@ -108,6 +108,10 @@ def format_timedelta(delta: timedelta):
     return f'{months} months'
 
 
+def redact_password(password: str) -> str:
+    return '*' * len(password)
+
+
 def _get_medias(
     msc: MediaServerClient,
     added_after: Optional[date] = None,
@@ -322,11 +326,12 @@ def _warn_speakers_about_deletion(
     apply: bool = False,
 ):
     smtp_server = msc.conf.get('SMTP_SERVER')
+    smtp_port = msc.conf.get('SMTP_PORT', 587)
     smtp_login = msc.conf.get('SMTP_LOGIN')
     smtp_password = msc.conf.get('SMTP_PASSWORD')
     smtp_email = msc.conf.get('SMTP_SENDER_EMAIL')
     if not (smtp_server and smtp_login and smtp_password and smtp_email):
-        smtp_password = '*' * len(smtp_password)
+        smtp_password = redact_password(smtp_password)
         raise MisconfiguredError(f'{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_email=}')
     html_template, plain_template = _get_templates(html_email_template, plain_email_template)
 
@@ -383,7 +388,7 @@ def _warn_speakers_about_deletion(
 
     if apply:
         context = ssl.create_default_context()
-        smtp_ctx_manager = smtplib.SMTP_SSL(smtp_server, 465, context=context)
+        smtp_ctx_manager = smtplib.SMTP_SSL(smtp_server, smtp_port, context=context)
     else:
         smtp_ctx_manager = nullcontext()
 
@@ -657,6 +662,11 @@ def delete_old_medias(sys_args):
         action='store_true',
     )
     parser.add_argument(
+        '--send-test-email-to',
+        help='Use this flag to define an email address to send your template test to '
+             '(use with conjunction with --test-email-template.'
+    )
+    parser.add_argument(
         '--log-level',
         help='Log level.',
         default='info',
@@ -743,6 +753,30 @@ def delete_old_medias(sys_args):
             email_subject_template=args.email_subject_template,
         )
         logger.info(message)
+        if recipient := args.send_test_email_to:
+            smtp_server = msc.conf.get('SMTP_SERVER')
+            smtp_port = msc.conf.get('SMTP_PORT', 587)
+            smtp_login = msc.conf.get('SMTP_LOGIN')
+            smtp_password = msc.conf.get('SMTP_PASSWORD')
+            smtp_email = msc.conf.get('SMTP_SENDER_EMAIL')
+            if not (smtp_server and smtp_login and smtp_password and smtp_email):
+                smtp_password = redact_password(smtp_password)
+                raise MisconfiguredError(f'{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_email=}')
+
+            logger.info(f"Trying to send test email to {recipient} via {smtp_login}:{redact_password(smtp_password)}@{smtp_server}:{smtp_port}")
+
+            context = ssl.create_default_context()
+            smtp_ctx_manager = smtplib.SMTP_SSL(smtp_server, smtp_port, context=context, timeout=10)
+
+            with smtp_ctx_manager as smtp:
+                smtp.login(smtp_login, smtp_password)
+                try:
+                    smtp.sendmail(smtp_email, recipient, message)
+                except smtplib.SMTPException as err:
+                    logger.error(
+                        f'Cannot send email to "{recipient}": {err}. '
+                        'Medias will be added to the fallback recipient\'s email.'
+                    )
     else:
         medias = _get_medias(
             msc,
