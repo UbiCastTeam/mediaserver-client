@@ -30,6 +30,7 @@ except ModuleNotFoundError:
 
 
 logger = logging.getLogger(__name__)
+
 DEFAULT_PLAIN_EMAIL_TEMPLATE = (
     'The following {media_count} medias (total {media_size_pp}) hosted '
     'on the video platform {platform_hostname} should '
@@ -109,7 +110,7 @@ def format_timedelta(delta: timedelta):
 
 
 def redact_password(password: str) -> str:
-    return '*' * len(password)
+    return '*' * len(password) if password else ''
 
 
 def _get_medias(
@@ -674,7 +675,8 @@ def delete_old_medias(sys_args):
     )
     args = parser.parse_args(sys_args)
 
-    logging.basicConfig()
+    logger.addHandler(logging.StreamHandler())
+    logging.basicConfig(filename=f'mass-delete-old-medias-{datetime.now().strftime("%Y%m%d-%H%M%S")}.log')
     logger.setLevel(args.log_level.upper())
 
     msc = MediaServerClient(args.conf)
