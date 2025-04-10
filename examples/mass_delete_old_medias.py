@@ -85,6 +85,12 @@ class MisconfiguredError(Exception):
     pass
 
 
+def get_ssl_context():
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
+
 def format_size(size_bytes: int) -> str:
     """
     Return human-readable size with automatic suffix.
@@ -388,14 +394,15 @@ def _warn_speakers_about_deletion(
     }
 
     if apply:
-        context = ssl.create_default_context()
-        smtp_ctx_manager = smtplib.SMTP_SSL(smtp_server, smtp_port, context=context)
+        ssl_context = get_ssl_context()
+        smtp_ctx_manager = smtplib.SMTP(smtp_server, smtp_port)
     else:
         smtp_ctx_manager = nullcontext()
 
     sent_count = 0
     with smtp_ctx_manager as smtp:
         if apply:
+            smtp.starttls(context=ssl_context)
             smtp.login(smtp_login, smtp_password)
         for recipient, (message, context) in to_send.items():
             try:
@@ -767,10 +774,13 @@ def delete_old_medias(sys_args):
 
             logger.info(f"Trying to send test email to {recipient} via {smtp_login}:{redact_password(smtp_password)}@{smtp_server}:{smtp_port}")
 
-            context = ssl.create_default_context()
-            smtp_ctx_manager = smtplib.SMTP_SSL(smtp_server, smtp_port, context=context, timeout=10)
+            ssl_context = get_ssl_context()
+            #smtp_ctx_manager = smtplib.SMTP_SSL(smtp_server, smtp_port, context=context, timeout=10)
+            # to not use SSL from the beginning, use STARTTLS instead
+            smtp_ctx_manager = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
 
             with smtp_ctx_manager as smtp:
+                smtp.starttls(context=ssl_context)
                 smtp.login(smtp_login, smtp_password)
                 try:
                     smtp.sendmail(smtp_email, recipient, message)
