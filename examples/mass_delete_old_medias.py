@@ -8,7 +8,7 @@ their medias by applying a category to them.
 """
 
 import argparse
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -85,10 +85,30 @@ class MisconfiguredError(Exception):
     pass
 
 
-def get_ssl_context():
-    context = ssl.create_default_context()
-    context.minimum_version = ssl.TLSVersion.TLSv1_2
-    return context
+@contextmanager
+def get_configured_smtp(msc_conf, apply):
+    smtp_server = msc_conf.get('SMTP_SERVER')
+    smtp_port = msc_conf.get('SMTP_PORT', 587)
+    smtp_login = msc_conf.get('SMTP_LOGIN')
+    smtp_password = msc_conf.get('SMTP_PASSWORD')
+    smtp_sender_email = msc_conf.get('SMTP_SENDER_EMAIL')
+
+    if not (smtp_server and smtp_login and smtp_password and smtp_sender_email):
+        smtp_password = redact_password(smtp_password)
+        raise MisconfiguredError(f'{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_sender_email=}')
+
+    if apply:
+        ssl_context = ssl.create_default_context()
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        smtp_ctx_manager = smtplib.SMTP(smtp_server, smtp_port)
+    else:
+        smtp_ctx_manager = nullcontext()
+
+    with smtp_ctx_manager as smtp:
+        if apply:
+            smtp.starttls(context=ssl_context)
+            smtp.login(smtp_login, smtp_password)
+        yield smtp
 
 
 def format_size(size_bytes: int) -> str:
@@ -332,14 +352,6 @@ def _warn_speakers_about_deletion(
     fallback_email: str,
     apply: bool = False,
 ):
-    smtp_server = msc.conf.get('SMTP_SERVER')
-    smtp_port = msc.conf.get('SMTP_PORT', 587)
-    smtp_login = msc.conf.get('SMTP_LOGIN')
-    smtp_password = msc.conf.get('SMTP_PASSWORD')
-    smtp_email = msc.conf.get('SMTP_SENDER_EMAIL')
-    if not (smtp_server and smtp_login and smtp_password and smtp_email):
-        smtp_password = redact_password(smtp_password)
-        raise MisconfiguredError(f'{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_email=}')
     html_template, plain_template = _get_templates(html_email_template, plain_email_template)
 
     users = _get_users(msc)
@@ -379,10 +391,11 @@ def _warn_speakers_about_deletion(
         for speaker_email in recipients:
             medias_per_speaker.setdefault(speaker_email, []).append(media)
 
+    smtp_sender_email = msc.conf.get('SMTP_SENDER_EMAIL')
     to_send = {
         speaker_email: _prepare_mail(
             msc,
-            sender=smtp_email,
+            sender=smtp_sender_email,
             speaker_email=speaker_email,
             medias=speaker_medias,
             delete_date=delete_date,
@@ -393,21 +406,12 @@ def _warn_speakers_about_deletion(
         ) for speaker_email, speaker_medias in medias_per_speaker.items()
     }
 
-    if apply:
-        ssl_context = get_ssl_context()
-        smtp_ctx_manager = smtplib.SMTP(smtp_server, smtp_port)
-    else:
-        smtp_ctx_manager = nullcontext()
-
     sent_count = 0
-    with smtp_ctx_manager as smtp:
-        if apply:
-            smtp.starttls(context=ssl_context)
-            smtp.login(smtp_login, smtp_password)
+    with get_configured_smtp(msc.conf, apply) as smtp:
         for recipient, (message, context) in to_send.items():
             try:
                 if apply:
-                    smtp.sendmail(smtp_email, recipient, message)
+                    smtp.sendmail(smtp_sender_email, recipient, message)
             except smtplib.SMTPException as err:
                 logger.error(
                     f'Cannot send email to "{recipient}": {err}. '
@@ -423,7 +427,7 @@ def _warn_speakers_about_deletion(
         if to_fallback:
             fallback_message, context = _prepare_mail(
                 msc,
-                sender=smtp_email,
+                sender=smtp_sender_email,
                 speaker_email=fallback_email,
                 medias=to_fallback,
                 delete_date=delete_date,
@@ -434,7 +438,7 @@ def _warn_speakers_about_deletion(
             )
             try:
                 if apply:
-                    smtp.sendmail(smtp_email, fallback_email, fallback_message)
+                    smtp.sendmail(smtp_sender_email, fallback_email, fallback_message)
             except Exception as err:
                 logger.error(
                     f'Mail delivery to fallback email address "{fallback_email}" failed.\n'
@@ -767,23 +771,16 @@ def delete_old_medias(sys_args):
             smtp_port = msc.conf.get('SMTP_PORT', 587)
             smtp_login = msc.conf.get('SMTP_LOGIN')
             smtp_password = msc.conf.get('SMTP_PASSWORD')
-            smtp_email = msc.conf.get('SMTP_SENDER_EMAIL')
-            if not (smtp_server and smtp_login and smtp_password and smtp_email):
+            smtp_sender_email = msc.conf.get('SMTP_SENDER_EMAIL')
+            if not (smtp_server and smtp_login and smtp_password and smtp_sender_email):
                 smtp_password = redact_password(smtp_password)
-                raise MisconfiguredError(f'{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_email=}')
+                raise MisconfiguredError(f'{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_sender_email=}')
 
             logger.info(f"Trying to send test email to {recipient} via {smtp_login}:{redact_password(smtp_password)}@{smtp_server}:{smtp_port}")
 
-            ssl_context = get_ssl_context()
-            #smtp_ctx_manager = smtplib.SMTP_SSL(smtp_server, smtp_port, context=context, timeout=10)
-            # to not use SSL from the beginning, use STARTTLS instead
-            smtp_ctx_manager = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
-
-            with smtp_ctx_manager as smtp:
-                smtp.starttls(context=ssl_context)
-                smtp.login(smtp_login, smtp_password)
+            with get_configured_smtp(msc.conf, True) as smtp:
                 try:
-                    smtp.sendmail(smtp_email, recipient, message)
+                    smtp.sendmail(smtp_sender_email, recipient, message)
                 except smtplib.SMTPException as err:
                     logger.error(
                         f'Cannot send email to "{recipient}": {err}. '
