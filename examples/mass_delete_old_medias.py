@@ -377,7 +377,7 @@ def _warn_speakers_about_deletion(
         for speaker_id, speaker_email in zip_longest(speakers_ids, speakers_emails):
             if speaker_email and speaker_email in valid_emails:
                 recipients.append(speaker_email)
-            elif speaker_id and emails_by_speaker_id[speaker_id] in valid_emails:
+            elif speaker_id and emails_by_speaker_id.get(speaker_id) in valid_emails:
                 recipients.append(emails_by_speaker_id[speaker_id])
             elif fallback_to_channel_manager and media['managers_emails']:
                 for manager_email in media['managers_emails'].split('\n'):
