@@ -694,14 +694,9 @@ def delete_old_medias(sys_args):
     msc.conf['TIMEOUT'] = max(600, msc.conf['TIMEOUT'])
 
     if args.apply:
-        answer = input(
-            'The script is running in normal mode. '
-            'Emails will be sent, medias will be deleted.\n'
-            'Please ensure that the recycle-bin is enabled on your platform '
-            f'{msc.conf["SERVER_URL"]}/admin/settings/#id_trash_enabled '
-            'Proceed ? [y / n]'
-        )
-        if answer.lower() not in ['yes', 'y']:
+        is_trash_enabled = msc.api('/info')["data"].get("trash_enabled")
+        if not is_trash_enabled:
+            logger.warning('It seems that the trash is not enabled on this platform, this is really dangerous, exiting')
             sys.exit(0)
     else:
         logger.info(
