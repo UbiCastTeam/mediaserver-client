@@ -196,12 +196,18 @@ def _get_medias(
                     f'{media_pp} was skipped because it has the categories {common_categories}.'
                 )
             else:
-                if views_max_count:
-                    media['views_over_period'] = unwatched[media['oid']]
-                    media['views_after'] = views_after.strftime('%Y-%m-%d')
-                    media['views_before'] = views_before.strftime('%Y-%m-%d')
-                media['managers_emails'] = channels.get(media['parent_oid'], {}).get('managers_emails')
-                selected_medias.append(media)
+                unwatched_views = unwatched.get(media['oid'])
+                if views_max_count is not None:
+                    if unwatched_views is None:
+                        logger.debug(f'{media_pp} was skipped because it has been watched more than {views_max_count} times over the configured period')
+                    else:
+                        media['views_over_period'] = unwatched_views
+                        media['views_after'] = views_after.strftime('%Y-%m-%d')
+                        media['views_before'] = views_before.strftime('%Y-%m-%d')
+                        selected_medias.append(media)
+                else:
+                    media['managers_emails'] = channels.get(media['parent_oid'], {}).get('managers_emails')
+                    selected_medias.append(media)
 
     storage_used = sum(media['storage_used'] for media in selected_medias)
     logger.info(
