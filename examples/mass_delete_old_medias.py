@@ -166,6 +166,8 @@ def _get_medias(
             )['unwatched']
         }
 
+    skip_categories_lowercase = [c.lower() for c in skip_categories]
+
     channels = {channel['oid']: channel for channel in catalog['channels']}
     selected_medias = []
     for key in ('videos', 'lives'):
@@ -191,7 +193,7 @@ def _get_medias(
                     f'{media_pp} was skipped because it was viewed more than {views_max_count} '
                     f'times between {views_after_pp} and {views_before_pp}.'
                 )
-            elif skip_categories and (common_categories := categories.intersection(skip_categories)):
+            elif skip_categories and (common_categories := categories.intersection(skip_categories_lowercase)):
                 logger.debug(
                     f'{media_pp} was skipped because it has the categories {common_categories}.'
                 )
@@ -606,7 +608,8 @@ def delete_old_medias(sys_args):
         help='Category name used to signify that content must be preserved. Can be '
              'passed multiple times to skip multiple categories '
              '(e.g.: --skip-category="do not delete" --skip-category="to keep"). '
-             'Default is --skip-category="do not delete"',
+             'Default is --skip-category="do not delete"'
+             'Note: case insensitive',
         dest='skip_categories',
         action='append',
         default=[],
