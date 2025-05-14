@@ -19,6 +19,7 @@ from pathlib import Path
 import smtplib
 import ssl
 import sys
+import json
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -415,8 +416,34 @@ def _warn_speakers_about_deletion(
     }
 
     sent_count = 0
+
+    PROGRESS_FILE = "mass_delete_old_medias.inprogress"
+
+    def read_sent():
+        if os.path.isfile(PROGRESS_FILE):
+            logging.warning("Found interrupted session, resuming")
+            with open(PROGRESS_FILE, "r") as f:
+                return json.load(f)
+        else:
+            return list()
+
+    def add_sent(recipient):
+        sent = read_sent()
+        sent.append(recipient)
+        with open(PROGRESS_FILE, "w") as f:
+            json.dump(sent, f)
+
+    def finish_session():
+        logger.info(f"Removing progress file {PROGRESS_FILE}")
+        os.unlink(PROGRESS_FILE)
+
     with get_configured_smtp(msc.conf, apply) as smtp:
+        sent = read_sent()
         for recipient, (message, context) in to_send.items():
+            if recipient in sent:
+                logger.warning(f"Skipping {recipient}: already sent in last (interrupted) session")
+                continue
+
             try:
                 if apply:
                     smtp.sendmail(smtp_sender_email, recipient, message)
@@ -431,6 +458,7 @@ def _warn_speakers_about_deletion(
                     logger.debug(f'Sent "{recipient}" an email about {context}.')
                 else:
                     logger.debug(f'[Dry run] Would have sent "{recipient}" an email about {context}.')
+                add_sent(recipient)
                 sent_count += 1
         if to_fallback:
             fallback_message, context = _prepare_mail(
@@ -458,7 +486,9 @@ def _warn_speakers_about_deletion(
                     logger.debug(f'Sent "{fallback_email}" an email about {context}.')
                 else:
                     logger.debug(f'[Dry run] Would have sent "{fallback_email}" an email about {context}.')
+                add_sent(recipient)
                 sent_count += 1
+        finish_session()
         if apply:
             logger.info(f'Sent {sent_count} emails.')
         else:
