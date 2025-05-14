@@ -733,13 +733,13 @@ def delete_old_medias(sys_args):
     )
     parser.add_argument(
         "--test-email-template",
-        help="Use this flag to test your email templates. A single email will be printed to the "
+        help="Use this argument to test your email templates. A single email will be printed to the "
         "console with dummy values. No email will be sent and no media will be deleted.",
         action="store_true",
     )
     parser.add_argument(
         "--send-test-email-to",
-        help="Use this flag to define an email address to send your template test to "
+        help="Use this argument to define an email address to send your template test to "
         "(use with conjunction with --test-email-template.",
     )
     parser.add_argument(
