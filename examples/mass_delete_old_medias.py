@@ -112,6 +112,9 @@ class EmailSender:
             )
 
         if apply:
+            logger.info(
+                f"Using SMTP configuration {smtp_login}:{redact_password(smtp_password)}@{smtp_server}:{smtp_port}"
+            )
             ssl_context = ssl.create_default_context()
             ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
             self.smtp = smtp = smtplib.SMTP(smtp_server, smtp_port)
@@ -832,20 +835,7 @@ def delete_old_medias(sys_args):
         )
         logger.info(message)
         if recipient := args.send_test_email_to:
-            smtp_server = msc.conf.get("SMTP_SERVER")
-            smtp_port = msc.conf.get("SMTP_PORT", 587)
-            smtp_login = msc.conf.get("SMTP_LOGIN")
-            smtp_password = msc.conf.get("SMTP_PASSWORD")
             smtp_sender_email = msc.conf.get("SMTP_SENDER_EMAIL")
-            if not (smtp_server and smtp_login and smtp_password and smtp_sender_email):
-                smtp_password = redact_password(smtp_password)
-                raise MisconfiguredError(
-                    f"{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_sender_email=}"
-                )
-
-            logger.info(
-                f"Trying to send test email to {recipient} via {smtp_login}:{redact_password(smtp_password)}@{smtp_server}:{smtp_port}"
-            )
 
             with EmailSender(msc.conf, True) as smtp:
                 try:
