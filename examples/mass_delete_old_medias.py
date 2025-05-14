@@ -483,7 +483,7 @@ def _warn_speakers_about_deletion(
         for recipient, (message, context) in to_send.items():
             try:
                 smtp.sendmail(smtp_sender_email, recipient, message)
-            except smtplib.SMTPException as err:  # FIXME: should we really fallback in this case (e.g. network error) ?
+            except smtplib.SMTPRecipientsRefused as err:
                 logger.error(
                     f'Cannot send email to "{recipient}": {err}. '
                     "Medias will be added to the fallback recipient's email."
