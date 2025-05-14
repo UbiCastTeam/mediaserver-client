@@ -124,7 +124,12 @@ class EmailSender:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.apply:
+            logger.debug("Closing SMTP connection")
             self.smtp.quit()
+
+        if exc_type is None:
+            logger.debug(f"Removing progress file {self.PROGRESS_FILE}")
+            os.unlink(self.PROGRESS_FILE)
 
     def _read_sent(self):
         if os.path.isfile(self.PROGRESS_FILE):
@@ -141,11 +146,6 @@ class EmailSender:
         # FIXME: should we try an atomic write instead (i.e. swap files)?
         with open(self.PROGRESS_FILE, "w") as f:
             json.dump(self.sent, f)
-
-    def finish(self):
-        # Must be called manually
-        logger.debug(f"Removing progress file {self.PROGRESS_FILE}")
-        os.unlink(self.PROGRESS_FILE)
 
     def sendmail(self, smtp_sender_email, recipient, message):
         if recipient in self.sent:
@@ -520,7 +520,6 @@ def _warn_speakers_about_deletion(
             logger.info(f"Sent {smtp.newly_sent} emails.")
         else:
             logger.info(f"[Dry run] {smtp.newly_sent} emails would have been sent.")
-        smtp.finish()
 
 
 def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = False):
@@ -856,7 +855,6 @@ def delete_old_medias(sys_args):
                         f'Cannot send email to "{recipient}": {err}. '
                         "Medias will be added to the fallback recipient's email."
                     )
-                smtp.finish()
     else:
         medias = _get_medias(
             msc,
