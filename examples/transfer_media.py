@@ -30,6 +30,7 @@ Other tools which can help:
 * dump_users_with_personal_media.py : generate a CSV file for provisioning users in the target platform
 * dump_oids.py : generate a text file with all oids of the source platform to use with --oid-file
 * sync_transferred_media_permissions.py : sync access permissions for authenticated and unauthenticated user groups only
+* regen_redirection_table.py : produces a CSV file containing previous_oid,new_oid for each media
 
 '''
 
