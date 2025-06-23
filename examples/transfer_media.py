@@ -18,12 +18,12 @@ Note that
 * ensure that the --personal-channels-root parameter is correct (depends on the main language of the source platform !)
 
 Usage:
-./transfer_media.py
-    --conf-src ../configs/src.json
-    --conf-dest ../configs/dest.json
-    --oid v12689655a7a850wrgs8
-    --delete-temp
-    --migrate-personal-channels
+./transfer_media.py \
+    --conf-src ../configs/src.json \
+    --conf-dest ../configs/dest.json \
+    --oid v12689655a7a850wrgs8 \
+    --delete-temp \
+    --migrate-personal-channels \
     --root-channel "Source platform"
 
 Other tools which can help:
@@ -45,7 +45,7 @@ from pathlib import Path
 import requests
 
 
-def download_file(url, local_filename, verify=True):
+def download_file(url, local_filename, verify):
     with requests.get(url, stream=True, verify=verify) as r:
         r.raise_for_status()
         total_size = int(r.headers.get('content-length'))
@@ -126,7 +126,7 @@ def download_media_best_resource(msc, item, media_download_dir, file_prefix):
         )['url']
 
         print(f'Will download file to "{destination_resource}".')
-        download_file(resource_url, destination_resource)
+        download_file(resource_url, destination_resource, verify=msc.conf["VERIFY_SSL"])
     return destination_resource
 
 
