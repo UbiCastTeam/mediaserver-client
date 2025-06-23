@@ -236,7 +236,7 @@ class Stats:
                     mtype = "upload"
                 elif origin in ["Manual (form: AddVODWithEmbedForm)", "manual_advanced_vod_embed"]:
                     mtype = "embed"
-                elif origin == ["Manual (form: AddVODWithResourcesForm)", "manual_advanced_vod_external"]:
+                elif origin in ["Manual (form: AddVODWithResourcesForm)", "manual_advanced_vod_external"]:
                     mtype = "external-resource"
                 elif origin in ["Manual (form: AddVODWithYouTubeForm)", "manual_advanced_vod_youtube"]:
                     mtype = "youtube"
