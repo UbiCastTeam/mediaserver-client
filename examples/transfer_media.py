@@ -14,6 +14,7 @@ It will preserve
 * unlisted state
 
 Note that
+* this script is in simulation mode by default, you need to run it with --apply if you want to actually run the transfer
 * it will re-transcode (albeit run in low priority)
 * ensure that the --personal-channels-root parameter is correct (depends on the main language of the source platform !)
 
