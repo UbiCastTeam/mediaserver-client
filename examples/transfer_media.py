@@ -15,10 +15,16 @@ It will preserve
 
 Note that
 * it will re-transcode (albeit run in low priority)
-* ensure that the --personal-channels-root parameter is correct (it depends on the main language of the source platform !)
+* ensure that the --personal-channels-root parameter is correct (depends on the main language of the source platform !)
 
 Usage:
-./transfer_media.py --conf-src ../configs/src.json --conf-dest ../configs/dest.json --oid v12689655a7a850wrgs8 --delete-temp --migrate-personal-channels --root-channel "Source platform"
+./transfer_media.py
+    --conf-src ../configs/src.json
+    --conf-dest ../configs/dest.json
+    --oid v12689655a7a850wrgs8
+    --delete-temp
+    --migrate-personal-channels
+    --root-channel "Source platform"
 
 Other tools which can help:
 * dump_users_with_personal_media.py : generate a CSV file for provisioning users in the target platform
