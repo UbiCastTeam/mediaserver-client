@@ -231,15 +231,16 @@ class Stats:
                     "Manual (form: AddMediaWithFileForm)",
                     "Manual (form: AddVODByUploadForm)",
                     "Manual (form: AddVODWithMetadataZipForm)",
+                    "manual_upload",
                 ]:
                     mtype = "upload"
-                elif origin == "Manual (form: AddVODWithEmbedForm)":
+                elif origin in ["Manual (form: AddVODWithEmbedForm)", "manual_advanced_vod_embed"]:
                     mtype = "embed"
-                elif origin == "Manual (form: AddVODWithResourcesForm)":
+                elif origin == ["Manual (form: AddVODWithResourcesForm)", "manual_advanced_vod_external"]:
                     mtype = "external-resource"
-                elif origin == "Manual (form: AddVODWithYouTubeForm)":
+                elif origin in ["Manual (form: AddVODWithYouTubeForm)", "manual_advanced_vod_youtube"]:
                     mtype = "youtube"
-                elif origin == "Manual (form: AddVODEmptyForm)":
+                elif origin in ["Manual (form: AddVODEmptyForm)", "manual_advanced_vod_empty"]:
                     mtype = "empty"
                 elif origin.startswith("webstudio_"):
                     # webstudio_linux_chromium_102
