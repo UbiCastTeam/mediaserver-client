@@ -1,9 +1,30 @@
 #!/usr/bin/env python3
 '''
-Script to move one media from one video platform to another
+Script to transfer a list of media (provided as arguments or in a text file) from one Nudgis video platform to another,
+replicating the source channel tree (optionally, under an additional root channel).
+
+Optionally (--migrate-personal-channels), for users which have been provisioned into the target platform, it will
+migrate content located in their personal channel in the source platform into a subchannel of the personal channel
+of the same user in the target platform.
+
+It will preserve
+* metadata
+* annotations
+* published state
+* unlisted state
+
+Note that
+* it will re-transcode (albeit run in low priority)
+* ensure that the --personal-channels-root parameter is correct (it depends on the main language of the source platform !)
 
 Usage:
-./transfer_media.py --conf-src ../configs/src.json --conf-dest ../configs/dest.json --oid v12689655a7a850wrgs8 --delete
+./transfer_media.py --conf-src ../configs/src.json --conf-dest ../configs/dest.json --oid v12689655a7a850wrgs8 --delete-temp --migrate-personal-channels --root-channel "Source platform"
+
+Other tools which can help:
+* dump_users_with_personal_media.py : generate a CSV file for provisioning users in the target platform
+* dump_oids.py : generate a text file with all oids of the source platform to use with --oid-file
+* sync_transferred_media_permissions.py : sync access permissions for authenticated and unauthenticated user groups only
+
 '''
 
 import argparse
@@ -339,6 +360,9 @@ if __name__ == '__main__':
             'progress_callback': print_progress,
             'external_ref': external_ref,
             'own_media': 'no',
+            'skip_automatic_subtitles': 'yes',
+            'skip_automatic_enrichments': 'yes',
+            'priority': 'low',
         }
 
         metadata = extract_metadata_from_zip(zip_path)

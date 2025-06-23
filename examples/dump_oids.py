@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 
-def dump_voids(msc):
+def dump_oids_legacy(msc):
     oids = set()
 
     more = True
@@ -55,7 +55,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     msc = MediaServerClient(args.conf)
 
-    oids = dump_voids(msc)
+    version = msc.get_server_version()
+    if version <= (12, 3, 0):
+        oids = dump_oids_legacy(msc)
+    else:
+        oids = [v["oid"] for v in msc.get_catalog(fmt='json')["videos"]]
 
     print(f"Writing oids in to {args.file}")
     Path(args.file).open('w').write("\n".join(oids))
