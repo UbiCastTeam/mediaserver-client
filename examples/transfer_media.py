@@ -5,7 +5,7 @@ replicating the source channel tree (optionally, under an additional root channe
 
 Optionally (--migrate-personal-channels), for users which have been provisioned into the target platform, it will
 migrate content located in their personal channel in the source platform into a subchannel of the personal channel
-of the same user in the target platform.
+of the same user in the target platform (original tree in source personal channel will not be preserved).
 
 It will preserve
 * metadata
