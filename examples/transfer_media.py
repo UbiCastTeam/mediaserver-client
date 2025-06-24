@@ -234,7 +234,9 @@ if __name__ == "__main__":
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
 
-    class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawTextHelpFormatter):
+    class CustomFormatter(
+        argparse.ArgumentDefaultsHelpFormatter, argparse.RawTextHelpFormatter
+    ):
         pass
 
     parser = argparse.ArgumentParser(
@@ -244,14 +246,14 @@ if __name__ == "__main__":
     # Configuration
     config_group = parser.add_argument_group("configuration")
     config_group.add_argument(
-        '--conf-src',
-        help='Path to the source platform configuration file.',
+        "--conf-src",
+        help="Path to the source platform configuration file.",
         required=True,
         type=str,
     )
     config_group.add_argument(
-        '--conf-dest',
-        help='Path to the destination platform configuration file.',
+        "--conf-dest",
+        help="Path to the destination platform configuration file.",
         required=True,
         type=str,
     )
@@ -259,25 +261,25 @@ if __name__ == "__main__":
     # Media selection
     media_group = parser.add_argument_group("media selection")
     media_group.add_argument(
-        '--oid',
-        help='OID of the media to transfer. Can be specified multiple times.',
+        "--oid",
+        help="OID of the media to transfer. Can be specified multiple times.",
         type=str,
-        action='append',
+        action="append",
     )
     media_group.add_argument(
-        '--oid-file',
-        help='Path to a file containing one OID per line.',
+        "--oid-file",
+        help="Path to a file containing one OID per line.",
         type=Path,
     )
 
     # Migration options
     migration_group = parser.add_argument_group("migration options")
     migration_group.add_argument(
-        '--root-channel',
+        "--root-channel",
         help=(
-            'Optional root channel title or path on the destination platform where media will be placed into.\n'
-            'Can contain multiple channels (mspath-like), like A/B/C\n'
-            'Example:\n'
+            "Optional root channel title or path on the destination platform where media will be placed into.\n"
+            "Can contain multiple channels (mspath-like), like A/B/C\n"
+            "Example:\n"
             '    Source path: "Faculty of medicine/Year 1"\n'
             '    Root channel: "School A/Migration"\n'
             '    Target path: "School A/Migration/Faculty of medicine/Year 1"'
@@ -285,50 +287,50 @@ if __name__ == "__main__":
         type=str,
     )
     migration_group.add_argument(
-        '--migrate-personal-channels',
+        "--migrate-personal-channels",
         help=(
-            'If set, personal content will be migrated into a subfolder of the personal channel.\n'
-            'Note that it will flatten the personal channel tree on the destination platform.\n'
-            'See --personal-subchannel to specify destination channel'
+            "If set, personal content will be migrated into a subfolder of the personal channel.\n"
+            "Note that it will flatten the personal channel tree on the destination platform.\n"
+            "See --personal-subchannel to specify destination channel"
         ),
-        action='store_true',
+        action="store_true",
     )
     migration_group.add_argument(
-        '--personal-channels-root',
-        help='Name of the personal channel on the source platform (it is langage specific and cannot be auto-detected).',
-        default='Chaînes personnelles',
+        "--personal-channels-root",
+        help="Name of the personal channel on the source platform (it is langage specific and cannot be auto-detected).",
+        default="Chaînes personnelles",
         type=str,
     )
     migration_group.add_argument(
-        '--personal-subchannel',
+        "--personal-subchannel",
         help=(
-            'Title of the subchannel of personal channel to create on the destination platform.\n'
-            'Example:\n'
+            "Title of the subchannel of personal channel to create on the destination platform.\n"
+            "Example:\n"
             '    Source path: "Personal channels/John Doe/Course A/Week 2"\n'
             '    Personal subchannel: "Migration"\n'
             '    Target path: "Personal channels/John Doe/Migration"'
         ),
-        default='Migration',
+        default="Migration",
         type=str,
     )
 
     # Temporary files and execution
     runtime_group = parser.add_argument_group("runtime options")
     runtime_group.add_argument(
-        '--temp-path',
-        help='Temporary folder to use during media migration.',
-        default=Path('temp'),
+        "--temp-path",
+        help="Temporary folder to use during media migration.",
+        default=Path("temp"),
         type=Path,
     )
     runtime_group.add_argument(
-        '--delete-temp',
-        help='If set, deletes the temporary directory after processing each media item.',
-        action='store_true',
+        "--delete-temp",
+        help="If set, deletes the temporary directory after processing each media item.",
+        action="store_true",
     )
     runtime_group.add_argument(
-        '--apply',
-        help='Whether to apply changes',
-        action='store_true',
+        "--apply",
+        help="Whether to apply changes",
+        action="store_true",
     )
 
     args = parser.parse_args()
