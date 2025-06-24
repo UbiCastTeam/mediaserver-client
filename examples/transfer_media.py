@@ -274,7 +274,6 @@ if __name__ == '__main__':
         '--root-channel',
         help='Optional root channel to move media into',
         type=str,
-        required=True,
     )
 
     parser.add_argument(
