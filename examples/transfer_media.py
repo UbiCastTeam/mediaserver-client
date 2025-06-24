@@ -297,7 +297,9 @@ if __name__ == "__main__":
     )
     migration_group.add_argument(
         "--personal-channels-root",
-        help="Name of the personal channel on the source platform (it is langage specific and cannot be auto-detected).",
+        help=(
+            "Name of the personal channel on the source platform (it is langage specific and cannot be auto-detected)."
+        ),
         default="Chaînes personnelles",
         type=str,
     )
