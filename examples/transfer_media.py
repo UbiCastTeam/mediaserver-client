@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-This script transfers a list of media (provided as arguments or in a text file) from one Nudgis video platform to another,
-replicating the source channel tree (optionally, under an additional root channel).
+This script transfers a list of media (provided as arguments or in a text file) from one Nudgis video platform to
+another, while preserving the source channel tree (optionally, under an additional root channel).
 
 Optionally (--migrate-personal-channels), for users which have been provisioned into the target platform, it will
 migrate content located in their personal channel in the source platform into a subchannel of the personal channel
