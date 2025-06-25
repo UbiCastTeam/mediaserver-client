@@ -405,12 +405,15 @@ if __name__ == "__main__":
         }
 
         metadata = extract_metadata_from_zip(zip_path)
+
+        # define target channel
         src_path = metadata["path"]
 
-        in_personal_channel = False
+        source_is_in_personal_channel = False
         if args.migrate_personal_channels and metadata.get("speaker"):
             if args.personal_channels_root in src_path:
-                in_personal_channel = True
+                source_is_in_personal_channel = True
+
             speaker = metadata["speaker"]
             subchannel_title = args.personal_subchannel
             personal_channel_oid = get_personal_channel(
@@ -421,6 +424,7 @@ if __name__ == "__main__":
 
         if not upload_args.get("channel") and args.root_channel:
             upload_args["channel"] = f"mscpath-{args.root_channel}/{src_path}"
+        #  else: if no channel is provided, the original path will be preserved automatically
 
         if args.apply:
             print("Starting upload")
