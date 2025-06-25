@@ -3,11 +3,11 @@
 This script transfers a list of media (provided as arguments or in a text file) from one Nudgis video platform to
 another, while preserving the source channel tree (optionally, under an additional root channel).
 
-Optionally (--migrate-personal-channels), for users which have been provisioned into the target platform, it will
-migrate content located in their personal channel in the source platform into a subchannel of the personal channel
+Optionally (--migrate-into-personal-channels), for users which have been provisioned into the target platform, it will
+migrate content located below their personal channel in the source platform into a subchannel of the personal channel
 of the same user in the target platform (original tree in source personal channel will not be preserved).
 
-It will preserve
+This script supports preserving
 * metadata
 * annotations
 * published state
@@ -24,7 +24,8 @@ Usage:
     --conf-dest ../configs/dest.json \
     --oid v12689655a7a850wrgs8 \
     --delete-temp \
-    --migrate-personal-channels \
+    --migrate-into-personal-channels \
+    --source-personal-channels-root-title "Chaînes personnelles" \
     --root-channel "Source platform"
 
 Other tools which can help:
@@ -287,26 +288,30 @@ if __name__ == "__main__":
         type=str,
     )
     migration_group.add_argument(
-        "--migrate-personal-channels",
+        "--migrate-into-personal-channels",
         help=(
-            "If set, personal content will be migrated into a subfolder of the personal channel.\n"
+            "If set, personal content will be migrated into a subfolder of the personal channel instead of "
+            "preserving the original path (and below the optional root channel).\n"
             "Note that it will flatten the personal channel tree on the destination platform.\n"
             "See --personal-subchannel to specify destination channel"
         ),
         action="store_true",
     )
     migration_group.add_argument(
-        "--personal-channels-root",
+        "--source-personal-channels-root-title",
         help=(
-            "Name of the personal channel on the source platform (it is langage specific and cannot be auto-detected)."
+            "Title of the root of personal channels on the source platform "
+            "(it depends on the source platform default langage and cannot be auto-detected).\n"
+            "If this is not set correctly, content may not be considered personal content."
         ),
         default="Chaînes personnelles",
         type=str,
     )
     migration_group.add_argument(
-        "--personal-subchannel",
+        "--personal-subchannel-title",
         help=(
-            "Title of the subchannel of personal channel to create on the destination platform.\n"
+            "Title of the subchannel of personal channel to create on the destination platform "
+            "if using --migrate-into-personal-channels.\n"
             "Example:\n"
             '    Source path: "Personal channels/John Doe/Course A/Week 2"\n'
             '    Personal subchannel: "Migration"\n'
