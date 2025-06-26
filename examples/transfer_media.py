@@ -293,7 +293,7 @@ if __name__ == "__main__":
             "If set, personal content will be migrated into a subfolder of the personal channel instead of "
             "preserving the original path (and below the optional root channel).\n"
             "Note that it will flatten the personal channel tree on the destination platform.\n"
-            "See --personal-subchannel to specify destination channel"
+            "See --personal-subchannel-title to specify destination channel"
         ),
         action="store_true",
     )
