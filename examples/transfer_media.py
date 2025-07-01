@@ -1,9 +1,42 @@
 #!/usr/bin/env python3
 '''
-Script to move one media from one video platform to another
+This script transfers a list of media (provided as arguments or in a text file) from one Nudgis video platform to
+another, while preserving the source channel tree (optionally, under an additional root channel).
+
+Optionally (--migrate-into-personal-channels), for users which have been provisioned into the target platform, it will
+migrate content located below their personal channel in the source platform into a subchannel of the personal channel
+of the same user in the target platform (original tree in source personal channel will not be preserved).
+
+This script supports preserving
+* metadata
+* annotations
+* published state
+* unlisted state
+
+Note that
+* this script is in simulation mode by default, you need to run it with --apply if you want to actually run the transfer
+* it will re-transcode (albeit run in low priority)
+* ensure that the --personal-channels-root parameter is correct (depends on the main language of the source platform !)
 
 Usage:
-./transfer_media.py --conf-src ../configs/src.json --conf-dest ../configs/dest.json --oid v12689655a7a850wrgs8 --delete
+./transfer_media.py \
+    --conf-src ../configs/src.json \
+    --conf-dest ../configs/dest.json \
+    --oid v12689655a7a850wrgs8 \
+    --delete-temp \
+    --root-channel 'University A'
+
+With the example above, here is the before/after location of the migrated media:
+
+    Source path: Channel A/Channel B/v12689655a7a850wrgs8
+    Target path: University A/Channel A/Channel B/v12689655a7a850wrgs8
+
+Other tools which can help:
+* dump_users_with_personal_media.py : generate a CSV file for provisioning users in the target platform
+* dump_oids.py : generate a text file with all oids of the source platform to use with --oid-file
+* sync_transferred_media_permissions.py : sync access permissions for authenticated and unauthenticated user groups only
+* regen_redirection_table.py : produces a CSV file containing previous_oid,new_oid for each media
+
 '''
 
 import argparse
@@ -17,7 +50,7 @@ from pathlib import Path
 import requests
 
 
-def download_file(url, local_filename, verify=True):
+def download_file(url, local_filename, verify):
     with requests.get(url, stream=True, verify=verify) as r:
         r.raise_for_status()
         total_size = int(r.headers.get('content-length'))
@@ -98,7 +131,7 @@ def download_media_best_resource(msc, item, media_download_dir, file_prefix):
         )['url']
 
         print(f'Will download file to "{destination_resource}".')
-        download_file(resource_url, destination_resource)
+        download_file(resource_url, destination_resource, verify=msc.conf['VERIFY_SSL'])
     return destination_resource
 
 
@@ -110,7 +143,7 @@ def download_media_metadata(msc, item, media_download_dir, file_prefix):
         include_annotations='all',
         include_resources_links='no',
     )
-    print(f'Metadata downloaded for media {item["oid"]}: "{path}".')
+    print(f"Metadata downloaded for media {item['oid']}: '{path}'.")
     return str(path)
 
 
@@ -205,76 +238,106 @@ if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
 
-    parser = argparse.ArgumentParser(description=__doc__.strip())
+    class CustomFormatter(
+        argparse.ArgumentDefaultsHelpFormatter, argparse.RawTextHelpFormatter
+    ):
+        pass
 
-    parser.add_argument(
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip(), formatter_class=CustomFormatter
+    )
+
+    # Configuration
+    config_group = parser.add_argument_group('configuration')
+    config_group.add_argument(
         '--conf-src',
-        help='Path to the configuration file for the source platform.',
+        help='Path to the source platform configuration file.',
         required=True,
         type=str,
     )
-
-    parser.add_argument(
+    config_group.add_argument(
         '--conf-dest',
-        help='Path to the configuration file for the destination platform.',
+        help='Path to the destination platform configuration file.',
         required=True,
         type=str,
     )
 
-    parser.add_argument(
-        '--temp-path',
-        help='Temporary folder to use.',
-        default=Path('temp'),
-        type=Path,
-    )
-
-    parser.add_argument(
+    # Media selection
+    media_group = parser.add_argument_group('media selection')
+    media_group.add_argument(
         '--oid',
-        help='oid of the media to transfer, can be used multiple times',
+        help='OID of the media to transfer. Can be specified multiple times.',
         type=str,
         action='append',
     )
-
-    parser.add_argument(
+    media_group.add_argument(
         '--oid-file',
-        help='Path to file containing one oid per line',
+        help='Path to a file containing one OID per line.',
         type=Path,
     )
 
-    parser.add_argument(
+    # Migration options
+    migration_group = parser.add_argument_group('migration options')
+    migration_group.add_argument(
         '--root-channel',
-        help='Optional root channel to move media into',
+        help=(
+            'Optional root channel title or path on the destination platform where media will be placed into.\n'
+            'Can contain multiple channels (mspath-like), like A/B/C\n'
+            'Example:\n'
+            '    Source path: "Faculty of medicine/Year 1"\n'
+            '    Root channel: "School A/Migration"\n'
+            '    Target path: "School A/Migration/Faculty of medicine/Year 1"'
+        ),
         type=str,
-        required=True,
     )
-
-    parser.add_argument(
-        '--personal-channels-root',
-        help='Name of the personal channel in the source platform',
+    migration_group.add_argument(
+        '--migrate-into-personal-channels',
+        help=(
+            'If set, personal content will be migrated into a subfolder of the personal channel instead of '
+            'preserving the original path (and below the optional root channel).\n'
+            'Note that it will flatten the personal channel tree on the destination platform.\n'
+            'See --personal-subchannel-title to specify destination channel'
+        ),
+        action='store_true',
+    )
+    migration_group.add_argument(
+        '--source-personal-channels-root-title',
+        help=(
+            'Title of the root of personal channels on the source platform '
+            '(it depends on the source platform default langage and cannot be auto-detected).\n'
+            'If this is not set correctly, content may not be considered personal content.'
+        ),
         default='Chaînes personnelles',
         type=str,
     )
-
-    parser.add_argument(
-        '--personal-subchannel',
-        help='Name of the subchannel of the personal channel in the target',
+    migration_group.add_argument(
+        '--personal-subchannel-title',
+        help=(
+            'Title of the subchannel of personal channel to create on the destination platform '
+            'if using --migrate-into-personal-channels.\n'
+            'Example:\n'
+            '    Source path: "Personal channels/John Doe/Course A/Week 2"\n'
+            '    Personal subchannel: "Migration"\n'
+            '    Target path: "Personal channels/John Doe/Migration"'
+        ),
         default='Migration',
         type=str,
     )
 
-    parser.add_argument(
+    # Temporary files and execution
+    runtime_group = parser.add_argument_group('runtime options')
+    runtime_group.add_argument(
+        '--temp-path',
+        help='Temporary folder to use during media migration.',
+        default=Path('temp'),
+        type=Path,
+    )
+    runtime_group.add_argument(
         '--delete-temp',
-        help='Whether to keep the downloaded folder',
+        help='If set, deletes the temporary directory after processing each media item.',
         action='store_true',
     )
-
-    parser.add_argument(
-        '--migrate-personal-channels',
-        help='Whether to migrate personal content in a subfolder of the personal channel',
-        action='store_true',
-    )
-
-    parser.add_argument(
+    runtime_group.add_argument(
         '--apply',
         help='Whether to apply changes',
         action='store_true',
@@ -339,15 +402,21 @@ if __name__ == '__main__':
             'progress_callback': print_progress,
             'external_ref': external_ref,
             'own_media': 'no',
+            'skip_automatic_subtitles': 'yes',
+            'skip_automatic_enrichments': 'yes',
+            'priority': 'low',
         }
 
         metadata = extract_metadata_from_zip(zip_path)
+
+        # define target channel
         src_path = metadata['path']
 
-        in_personal_channel = False
+        source_is_in_personal_channel = False
         if args.migrate_personal_channels and metadata.get('speaker'):
             if args.personal_channels_root in src_path:
-                in_personal_channel = True
+                source_is_in_personal_channel = True
+
             speaker = metadata['speaker']
             subchannel_title = args.personal_subchannel
             personal_channel_oid = get_personal_channel(
@@ -358,6 +427,7 @@ if __name__ == '__main__':
 
         if not upload_args.get('channel') and args.root_channel:
             upload_args['channel'] = f'mscpath-{args.root_channel}/{src_path}'
+        #  else: if no channel is provided, the original path will be preserved automatically
 
         if args.apply:
             print('Starting upload')
