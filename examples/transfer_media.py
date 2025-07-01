@@ -24,9 +24,12 @@ Usage:
     --conf-dest ../configs/dest.json \
     --oid v12689655a7a850wrgs8 \
     --delete-temp \
-    --migrate-into-personal-channels \
-    --source-personal-channels-root-title 'Chaînes personnelles' \
-    --root-channel 'Source platform'
+    --root-channel 'University A'
+
+With the example above, here is the before/after location of the migrated media:
+
+    Source path: Channel A/Channel B/v12689655a7a850wrgs8
+    Target path: University A/Channel A/Channel B/v12689655a7a850wrgs8
 
 Other tools which can help:
 * dump_users_with_personal_media.py : generate a CSV file for provisioning users in the target platform
