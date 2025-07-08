@@ -123,7 +123,7 @@ class EmailSender:
         self.sent = self._read_sent()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):  # noqa
         if self.apply:
             logger.debug("Closing SMTP connection")
             self.smtp.quit()
