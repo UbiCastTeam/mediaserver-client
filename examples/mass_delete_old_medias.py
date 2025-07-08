@@ -8,17 +8,17 @@ their medias by applying a category to them.
 """
 
 import argparse
-from datetime import date, datetime, timedelta
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from itertools import zip_longest
+import json
 import logging
 import os
-from pathlib import Path
 import smtplib
 import ssl
 import sys
-import json
+from datetime import date, datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from itertools import zip_longest
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -107,9 +107,7 @@ class EmailSender:
 
         if not (smtp_server and smtp_login and smtp_password and smtp_sender_email):
             smtp_password = redact_password(smtp_password)
-            raise MisconfiguredError(
-                f"{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_sender_email=}"
-            )
+            raise MisconfiguredError(f"{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_sender_email=}")
 
         if apply:
             logger.info(
@@ -152,9 +150,7 @@ class EmailSender:
 
     def sendmail(self, smtp_sender_email, recipient, message):
         if recipient in self.sent:
-            logger.warning(
-                f"Skipping {recipient}: already sent during last interrupted session"
-            )
+            logger.warning(f"Skipping {recipient}: already sent during last interrupted session")
         else:
             if self.apply:
                 self.smtp.sendmail(smtp_sender_email, recipient, message)
@@ -228,21 +224,14 @@ def _get_medias(
         medias = catalog.get(key, ())
         for media in medias:
             add_date = datetime.strptime(media["add_date"], "%Y-%m-%d %H:%M:%S").date()
-            categories = {
-                cat.strip(" \r\t").lower()
-                for cat in (media["categories"] or "").strip("\n").split("\n")
-            }
+            categories = {cat.strip(" \r\t").lower() for cat in (media["categories"] or "").strip("\n").split("\n")}
             media_pp = f"{media['title']} [{media['oid']}]"
             if added_before and add_date >= added_before:
                 before_date_pp = added_before.strftime("%Y-%m-%d")
-                logger.debug(
-                    f"{media_pp} was skipped because it was added after {before_date_pp}."
-                )
+                logger.debug(f"{media_pp} was skipped because it was added after {before_date_pp}.")
             elif added_after and add_date < added_after:
                 after_date_pp = added_after.strftime("%Y-%m-%d")
-                logger.debug(
-                    f"{media_pp} was skipped because it was added before {after_date_pp}."
-                )
+                logger.debug(f"{media_pp} was skipped because it was added before {after_date_pp}.")
             elif views_max_count and media["oid"] not in unwatched:
                 views_after_pp = views_after.strftime("%Y-%m-%d")
                 views_before_pp = views_before.strftime("%Y-%m-%d")
@@ -250,18 +239,15 @@ def _get_medias(
                     f"{media_pp} was skipped because it was viewed more than {views_max_count} "
                     f"times between {views_after_pp} and {views_before_pp}."
                 )
-            elif skip_categories and (
-                common_categories := categories.intersection(skip_categories_lowercase)
-            ):
-                logger.debug(
-                    f"{media_pp} was skipped because it has the categories {common_categories}."
-                )
+            elif skip_categories and (common_categories := categories.intersection(skip_categories_lowercase)):
+                logger.debug(f"{media_pp} was skipped because it has the categories {common_categories}.")
             else:
                 unwatched_views = unwatched.get(media["oid"])
                 if views_max_count is not None:
                     if unwatched_views is None:
                         logger.debug(
-                            f"{media_pp} was skipped because it has been watched more than {views_max_count} times over the configured period"
+                            f"{media_pp} was skipped because it has been watched \
+                            more than {views_max_count} times over the configured period"
                         )
                     else:
                         media["views_over_period"] = unwatched_views
@@ -269,16 +255,11 @@ def _get_medias(
                         media["views_before"] = views_before.strftime("%Y-%m-%d")
                         selected_medias.append(media)
                 else:
-                    media["managers_emails"] = channels.get(
-                        media["parent_oid"], {}
-                    ).get("managers_emails")
+                    media["managers_emails"] = channels.get(media["parent_oid"], {}).get("managers_emails")
                     selected_medias.append(media)
 
     storage_used = sum(media["storage_used"] for media in selected_medias)
-    logger.info(
-        f"Found {len(selected_medias)} medias matching the given filters "
-        f"(size: {format_size(storage_used)})."
-    )
+    logger.info(f"Found {len(selected_medias)} medias matching the given filters (size: {format_size(storage_used)}).")
     return selected_medias
 
 
@@ -334,13 +315,11 @@ def _prepare_mail(
         }
         if "views_over_period" in media:
             media_context["views"] = (
-                f"{media['views_over_period']} times between "
-                f"{media['views_after']} and {media['views_before']}"
+                f"{media['views_over_period']} times between {media['views_after']} and {media['views_before']}"
             )
         else:
             media_context["views"] = (
-                f"{media['views_last_year']} times last year, "
-                f"{media['views_last_month']} times last month"
+                f"{media['views_last_year']} times last year, {media['views_last_month']} times last month"
             )
         media_contexts.append(media_context)
     if plain_template:
@@ -388,25 +367,14 @@ def _get_templates(
     # prioritize it and don't send the default version for the other one.
     if html_is_custom and not plain_is_custom:
         plain_template = None
-        logger.info(
-            "HTML email template was found but plain email template was not. "
-            "Using HTML version only."
-        )
+        logger.info("HTML email template was found but plain email template was not. Using HTML version only.")
     elif not html_is_custom and plain_is_custom:
         html_template = None
-        logger.info(
-            "Plain email template was found but HTML email template was not. "
-            "Using plain version only."
-        )
+        logger.info("Plain email template was found but HTML email template was not. Using plain version only.")
     elif not html_is_custom and not plain_is_custom:
-        logger.info(
-            "Neither HTML nor plain email template were found. "
-            "Using default email templates."
-        )
+        logger.info("Neither HTML nor plain email template were found. Using default email templates.")
     else:
-        logger.info(
-            "HTML and plain email template were found. Using custom email templates."
-        )
+        logger.info("HTML and plain email template were found. Using custom email templates.")
     return html_template, plain_template
 
 
@@ -422,9 +390,7 @@ def _warn_speakers_about_deletion(
     fallback_email: str,
     apply: bool = False,
 ):
-    html_template, plain_template = _get_templates(
-        html_email_template, plain_email_template
-    )
+    html_template, plain_template = _get_templates(html_email_template, plain_email_template)
 
     users = _get_users(msc)
     valid_emails = {
@@ -438,14 +404,8 @@ def _warn_speakers_about_deletion(
     to_fallback = []
     for media in medias:
         recipients = []
-        speakers_ids = [
-            speaker_id.strip()
-            for speaker_id in (media.get("speaker_id") or "").split("|")
-        ]
-        speakers_emails = [
-            speaker_email.strip()
-            for speaker_email in (media.get("speaker_email") or "").split("|")
-        ]
+        speakers_ids = [speaker_id.strip() for speaker_id in (media.get("speaker_id") or "").split("|")]
+        speakers_emails = [speaker_email.strip() for speaker_email in (media.get("speaker_email") or "").split("|")]
         for speaker_id, speaker_email in zip_longest(speakers_ids, speakers_emails):
             if speaker_email and speaker_email in valid_emails:
                 recipients.append(speaker_email)
@@ -454,10 +414,7 @@ def _warn_speakers_about_deletion(
             elif fallback_to_channel_manager and media["managers_emails"]:
                 for manager_email in media["managers_emails"].split("\n"):
                     manager_email = manager_email.strip(" \r\t").lower()
-                    if (
-                        not manager_email.startswith("#")
-                        and manager_email in valid_emails
-                    ):
+                    if not manager_email.startswith("#") and manager_email in valid_emails:
                         recipients.append(manager_email)
 
         if not recipients:
@@ -507,18 +464,13 @@ def _warn_speakers_about_deletion(
             try:
                 smtp.sendmail(smtp_sender_email, fallback_email, fallback_message)
             except Exception as err:
-                logger.error(
-                    f'Mail delivery to fallback email address "{fallback_email}" failed.\n'
-                    f"{fallback_message}"
-                )
+                logger.error(f'Mail delivery to fallback email address "{fallback_email}" failed.\n{fallback_message}')
                 raise err
             else:
                 if apply:
                     logger.debug(f'Sent "{fallback_email}" an email about {context}.')
                 else:
-                    logger.debug(
-                        f'[Dry run] Would have sent "{fallback_email}" an email about {context}.'
-                    )
+                    logger.debug(f'[Dry run] Would have sent "{fallback_email}" an email about {context}.')
         if apply:
             logger.info(f"Sent {smtp.newly_sent} emails.")
         else:
@@ -534,9 +486,7 @@ def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = Fal
     deleted_count = 0
     deleted_size = 0
     if apply:
-        response = msc.api(
-            "catalog/bulk_delete/", method="post", data=dict(oids=list(medias.keys()))
-        )
+        response = msc.api("catalog/bulk_delete/", method="post", data=dict(oids=list(medias.keys())))
         for oid, result in response["statuses"].items():
             if result["status"] == 200:
                 logger.debug(f"Media {ms_url}{oid} has been deleted.")
@@ -548,17 +498,14 @@ def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = Fal
                     f"An error occurred while attempting to delete media {ms_url}{oid}. "
                     f"The media has not been deleted: {err}."
                 )
-        logger.info(
-            f"{deleted_count} medias ({format_size(deleted_size)}) have been successfully deleted."
-        )
+        logger.info(f"{deleted_count} medias ({format_size(deleted_size)}) have been successfully deleted.")
     else:
         for oid, media in medias.items():
             logger.debug(f"[Dry run] Media {ms_url}{oid} would have been deleted.")
             deleted_count += 1
             deleted_size += media["storage_used"]
         logger.info(
-            f"[Dry run] {deleted_count} medias ({format_size(deleted_size)}) "
-            f"would have been have been deleted."
+            f"[Dry run] {deleted_count} medias ({format_size(deleted_size)}) would have been have been deleted."
         )
 
 
@@ -754,9 +701,7 @@ def delete_old_medias(sys_args):
     args = parser.parse_args(sys_args)
 
     logger.addHandler(logging.StreamHandler())
-    logging.basicConfig(
-        filename=f"mass-delete-old-medias-{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
-    )
+    logging.basicConfig(filename=f"mass-delete-old-medias-{datetime.now().strftime('%Y%m%d-%H%M%S')}.log")
     logger.setLevel(args.log_level.upper())
 
     msc = MediaServerClient(args.conf)
@@ -765,15 +710,10 @@ def delete_old_medias(sys_args):
     if args.apply:
         is_trash_enabled = msc.api("/info")["data"].get("trash_enabled")
         if not is_trash_enabled:
-            logger.warning(
-                "It seems that the trash is not enabled on this platform, this is really dangerous, exiting"
-            )
+            logger.warning("It seems that the trash is not enabled on this platform, this is really dangerous, exiting")
             sys.exit(0)
     else:
-        logger.info(
-            "[Dry run] The script is running in dry-run mode. "
-            "No email will be sent, no media will be deleted."
-        )
+        logger.info("[Dry run] The script is running in dry-run mode. No email will be sent, no media will be deleted.")
     today = date.today()
     delete_date = datetime.strptime(args.delete_date, "%Y-%m-%d").date()
     added_after = None
@@ -793,8 +733,7 @@ def delete_old_medias(sys_args):
 
     if not any((views_max_count, added_after, added_before)):
         raise MisconfiguredError(
-            'At least one filter ("--added-after", "--added-before", '
-            '"--views-max-count") is required.'
+            'At least one filter ("--added-after", "--added-before", "--views-max-count") is required.'
         )
     safe_end_date = today - timedelta(days=1)
     if views_max_count is None:
@@ -803,12 +742,7 @@ def delete_old_medias(sys_args):
         views_before = None
     elif views_max_count < 0:
         raise MisconfiguredError('If given, "--views-max-count" must be >= 0.')
-    elif (
-        not views_after
-        or views_after > safe_end_date
-        or not views_before
-        or views_before > safe_end_date
-    ):
+    elif not views_after or views_after > safe_end_date or not views_before or views_before > safe_end_date:
         raise MisconfiguredError(
             'Both "--views-after" or "--views-before" must be given with "--views-max-count" '
             "to prevent deleting newer videos for which stats may not have been computed yet."
