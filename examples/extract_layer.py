@@ -1,49 +1,49 @@
 #!/usr/bin/env python3
-'''
-Script to extract one layer of a Dynamic RichMedia file into a single file. By default, will target the first camera it finds.
-Requires ffmpeg to be present in the PATH
+"""
+Script to extract one layer of a Dynamic RichMedia file into a single file.
+By default, will target the first camera it finds. Requires ffmpeg to be present in the PATH
 
 ./examples/extract_layer.py --url https://nudgis.tv/videos/myvideo/ --config myconfig.json --stop-after 100
-'''
+"""
+
 import argparse
+import json
 import logging
 import os
 import sys
-import json
 from urllib.parse import urlparse
 
-logger = logging.getLogger('upload_speed_test')
+logger = logging.getLogger("upload_speed_test")
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
     parser.add_argument(
-        '--url',
+        "--url",
         type=str,
         required=True,
-        help='URL of source media (can be the slug or permalink URL)'
+        help="URL of source media (can be the slug or permalink URL)",
     )
 
     parser.add_argument(
-        '--config',
+        "--config", type=str, required=True, help="Path to config file."
+    )
+
+    parser.add_argument(
+        "--layer-label",
         type=str,
-        required=True,
-        help='Path to config file.'
+        default="camera",
+        help="String to look for in the layer labels; the first matching layer will be selected",
     )
 
     parser.add_argument(
-        '--layer-label',
-        type=str,
-        default='camera',
-        help='String to look for in the layer labels; the first matching layer will be selected'
-    )
-
-    parser.add_argument(
-        '--stop-after',
+        "--stop-after",
         type=int,
         default=0,
-        help='Stop after this amount of seconds (useful for testing purposes)'
+        help="Stop after this amount of seconds (useful for testing purposes)",
     )
 
     args = parser.parse_args()
@@ -54,59 +54,61 @@ if __name__ == '__main__':
 
     msc = MediaServerClient(args.config)
     path = urlparse(args.url).path
-    name = path.strip('/').split('/')[-1]
-    if name.startswith('v') and len(name) == 20:
-        key = 'oid'
+    name = path.strip("/").split("/")[-1]
+    if name.startswith("v") and len(name) == 20:
+        key = "oid"
     else:
-        key = 'slug'
+        key = "slug"
 
-    params = {'full': 'yes'}
+    params = {"full": "yes"}
     params[key] = name
-    m = msc.api('/medias/get/', params=params)
-    if not m.get('info'):
-        print(f'No media found at {args.url}')
+    m = msc.api("/medias/get/", params=params)
+    if not m.get("info"):
+        print(f"No media found at {args.url}")
         sys.exit(1)
 
-    info = m['info']
-    layout_preset = info.get('layout_preset')
+    info = m["info"]
+    layout_preset = info.get("layout_preset")
     if not layout_preset:
-        print('Media does not have any layout info')
+        print("Media does not have any layout info")
         sys.exit(1)
 
     layout = json.loads(layout_preset)
-    original_size = layout['composition_area']
+    original_size = layout["composition_area"]
 
-    initial_preset = layout['composition_data'][0]
+    initial_preset = layout["composition_data"][0]
     target_layer = None
     available_layers = list()
-    for layer in initial_preset['layers']:
-        available_layers.append(layer['label'])
-        if target_layer is None and args.layer_label in layer['label']:
-            target_layer = layer['source']['roi']
+    for layer in initial_preset["layers"]:
+        available_layers.append(layer["label"])
+        if target_layer is None and args.layer_label in layer["label"]:
+            target_layer = layer["source"]["roi"]
 
     if not target_layer:
-        print(f'\nFound no layer with label containing {args.layer_label} in {initial_preset["layers"]}')
-        print(f'\nPossible --layer-label arguments are: {available_layers}')
+        print(
+            f"\nFound no layer with label containing {args.layer_label} in {initial_preset['layers']}"
+        )
+        print(f"\nPossible --layer-label arguments are: {available_layers}")
         sys.exit(1)
 
-    oid = info['oid']
-    resources = msc.api('/medias/resources-list/', params={'oid': oid})['resources']
+    oid = info["oid"]
+    resources = msc.api("/medias/resources-list/", params={"oid": oid})["resources"]
 
     resource = None
     # we expect the only mp4 resource to be the high quality file
     for r in resources:
-        if r['format'] == 'mp4':
+        if r["format"] == "mp4":
             resource = r
-            if r['width'] != original_size['w'] or r['height'] != original_size['h']:
-                print('Warning, downloaded file is smaller than original')
+            if r["width"] != original_size["w"] or r["height"] != original_size["h"]:
+                print("Warning, downloaded file is smaller than original")
             break
-    url = resource['file']
+    url = resource["file"]
 
-    filter_params = '{w}:{h}:{x}:{y}'.format(**target_layer)
+    filter_params = "{w}:{h}:{x}:{y}".format(**target_layer)
     cmd = f'ffmpeg -y -i {url} -filter:v "crop={filter_params}" -c:a copy'
     if args.stop_after:
-        cmd += f' -t {args.stop_after}'
-    cmd += f' {oid}_{args.layer_label}.mp4'
-    print('Starting command, hit Q key to abort')
+        cmd += f" -t {args.stop_after}"
+    cmd += f" {oid}_{args.layer_label}.mp4"
+    print("Starting command, hit Q key to abort")
     print(cmd)
     os.system(cmd)
