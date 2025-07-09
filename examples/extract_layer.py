@@ -10,15 +10,17 @@ import argparse
 import json
 import logging
 import os
+import subprocess
 import sys
 from urllib.parse import urlparse
 
-logger = logging.getLogger("upload_speed_test")
+logger = logging.getLogger("extract_layer")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__.strip(),
     )
 
     parser.add_argument(
@@ -74,7 +76,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     layout = json.loads(layout_preset)
-    original_size = layout["composition_area"]
+    original_size = layout.get("composition_area", {"w": 1920, "h": 1080})
 
     initial_preset = layout["composition_data"][0]
     target_layer = None
@@ -105,10 +107,12 @@ if __name__ == "__main__":
     url = resource["file"]
 
     filter_params = "{w}:{h}:{x}:{y}".format(**target_layer)
-    cmd = f'ffmpeg -y -i {url} -filter:v "crop={filter_params}" -c:a copy'
+    cmd = f'ffmpeg -y -i "{url}" -filter:v "crop={filter_params}" -c:a copy'
     if args.stop_after:
         cmd += f" -t {args.stop_after}"
     cmd += f" {oid}_{args.layer_label}.mp4"
     print("Starting command, hit Q key to abort")
     print(cmd)
-    os.system(cmd)
+    status, output = subprocess.getstatusoutput(cmd)
+    if status != 0:
+        print(output)
