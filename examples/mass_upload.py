@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 '''
-Script to upload videos
+Script to upload all videos contained in a folder
 
-./examples/mass_upload.py
+./examples/mass_upload.py \
     --config beta.json --input myfolder --channel "mscpath-A/B/C"
 '''
 from pathlib import Path
@@ -13,12 +12,13 @@ import logging
 import os
 import sys
 
-logger = logging.getLogger('upload_speed_test')
+logger = logging.getLogger('mass_upload')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__.strip(),
     )
 
     parser.add_argument(
