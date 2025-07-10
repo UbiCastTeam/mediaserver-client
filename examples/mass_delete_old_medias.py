@@ -99,29 +99,31 @@ class EmailSender:
 
         self.newly_sent = 0
 
-        smtp_server = msc_conf.get("SMTP_SERVER")
-        smtp_port = msc_conf.get("SMTP_PORT", 587)
-        smtp_login = msc_conf.get("SMTP_LOGIN")
-        smtp_password = msc_conf.get("SMTP_PASSWORD")
-        smtp_sender_email = msc_conf.get("SMTP_SENDER_EMAIL")
+        self.smtp_server = msc_conf.get("SMTP_SERVER")
+        self.smtp_port = msc_conf.get("SMTP_PORT", 587)
+        self.smtp_login = msc_conf.get("SMTP_LOGIN")
+        self.smtp_password = msc_conf.get("SMTP_PASSWORD")
+        self.smtp_sender_email = msc_conf.get("SMTP_SENDER_EMAIL")
 
-        if not (smtp_server and smtp_login and smtp_password and smtp_sender_email):
-            smtp_password = redact_password(smtp_password)
-            raise MisconfiguredError(f"{smtp_server=} / {smtp_login=} / {smtp_password=} / {smtp_sender_email=}")
-
-        if apply:
-            logger.info(
-                f"Using SMTP configuration {smtp_login}:{redact_password(smtp_password)}@{smtp_server}:{smtp_port}"
-            )
-            ssl_context = ssl.create_default_context()
-            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
-            self.smtp = smtp = smtplib.SMTP(smtp_server, smtp_port)
-            smtp.starttls(context=ssl_context)
-            smtp.login(smtp_login, smtp_password)
+        if not (self.smtp_server and self.smtp_login and self.smtp_password and self.smtp_sender_email):
+            smtp_password_redacted = redact_password(self.smtp_password)
+            raise MisconfiguredError(f"{self.smtp_server=} / {self.smtp_login=} / {smtp_password_redacted=} / {self.smtp_sender_email=}")
 
     def __enter__(self):
         self.sent = self._read_sent()
+        self.setup_smtp()
         return self
+
+    def setup_smtp(self):
+        if self.apply:
+            logger.info(
+                f"Using SMTP configuration {self.smtp_login}:{redact_password(self.smtp_password)}@{self.smtp_server}:{self.smtp_port}"
+            )
+            ssl_context = ssl.create_default_context()
+            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+            self.smtp = smtp = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            smtp.starttls(context=ssl_context)
+            smtp.login(self.smtp_login, self.smtp_password)
 
     def __exit__(self, exc_type, exc_value, traceback):  # noqa
         if self.apply:

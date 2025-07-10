@@ -188,6 +188,8 @@ def api_client(catalog, users):
                 return {'users': users}
             else:
                 return {'users': []}
+        elif url == '/info':
+            return {"data": {"trash_enabled": True}}
 
     from ms_client.client import MediaServerClient
 
@@ -221,6 +223,12 @@ class MockSMTP:
         assert password == 's3cr3t'
         self._logged_in = True
 
+    def starttls(self, context):
+        pass
+
+    def quit(self):
+        pass
+
     def sendmail(self, sender, recipient, message):
         assert self._logged_in
         if recipient == 'error@example.com':
@@ -241,7 +249,7 @@ class MockSMTP:
 @pytest.fixture()
 def mock_smtp():
     mock_smtp = MockSMTP()
-    with mock.patch('smtplib.SMTP_SSL', autospec=True, return_value=mock_smtp):
+    with mock.patch('smtplib.SMTP', autospec=True, return_value=mock_smtp):
         yield mock_smtp
 
 
