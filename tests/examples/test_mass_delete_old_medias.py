@@ -188,7 +188,7 @@ def api_client(catalog, users):
                 return {'users': users}
             else:
                 return {'users': []}
-        elif url == '/info':
+        elif url == 'info/':
             return {"data": {"trash_enabled": True}}
 
     from ms_client.client import MediaServerClient
@@ -315,16 +315,19 @@ def test_delete_old_medias__full_workflow(
     for recipient, oids in expected_sent_mails:
         assert mock_smtp.has_mail('sender@example.com', recipient, oids)
 
+    if apply:
+        assert api_client.api.call_args_list.pop(0) == mock.call('info/')
+
     # Check api calls and deleted oids
-    assert api_client.api.call_count == 2 if expected_deleted_oids else 1
-    assert api_client.api.call_args_list[0] == mock.call(
+    assert api_client.api.call_count == 3 if expected_deleted_oids else 2
+    assert api_client.api.call_args_list.pop(0) == mock.call(
         'catalog/get-all/',
         params={'format': 'json'},
         parse_json=True,
         timeout=120
     )
     if expected_deleted_oids:
-        assert api_client.api.call_args_list[1] == mock.call(
+        assert api_client.api.call_args_list.pop(0) == mock.call(
             'catalog/bulk_delete/',
             method='post',
             data=dict(oids=expected_deleted_oids)
@@ -400,6 +403,9 @@ def test_delete_old_medias__selection_filters(
     delete_old_medias(params)
 
     api_calls = iter(api_client.api.call_args_list)
+
+    assert next(api_calls) == mock.call('info/')
+
     assert next(api_calls) == mock.call(
         'catalog/get-all/',
         params={'format': 'json'},

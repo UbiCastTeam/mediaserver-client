@@ -710,7 +710,7 @@ def delete_old_medias(sys_args):
     msc.conf["TIMEOUT"] = max(600, msc.conf["TIMEOUT"])
 
     if args.apply:
-        is_trash_enabled = msc.api("/info")["data"].get("trash_enabled")
+        is_trash_enabled = msc.api("info/")["data"].get("trash_enabled")
         if not is_trash_enabled:
             logger.warning("It seems that the trash is not enabled on this platform, this is really dangerous, exiting")
             sys.exit(0)
