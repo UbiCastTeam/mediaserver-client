@@ -107,7 +107,9 @@ class EmailSender:
 
         if not (self.smtp_server and self.smtp_login and self.smtp_password and self.smtp_sender_email):
             smtp_password_redacted = redact_password(self.smtp_password)
-            raise MisconfiguredError(f"{self.smtp_server=} / {self.smtp_login=} / {smtp_password_redacted=} / {self.smtp_sender_email=}")
+            raise MisconfiguredError(
+                f"{self.smtp_server=} / {self.smtp_login=} / {smtp_password_redacted=} / {self.smtp_sender_email=}"
+            )
 
     def __enter__(self):
         self.sent = self._read_sent()
@@ -117,7 +119,8 @@ class EmailSender:
     def setup_smtp(self):
         if self.apply:
             logger.info(
-                f"Using SMTP configuration {self.smtp_login}:{redact_password(self.smtp_password)}@{self.smtp_server}:{self.smtp_port}"
+                "Using SMTP configuration: "
+                f"{self.smtp_login}:{redact_password(self.smtp_password)}@{self.smtp_server}:{self.smtp_port}"
             )
             ssl_context = ssl.create_default_context()
             ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
