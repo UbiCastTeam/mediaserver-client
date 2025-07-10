@@ -237,7 +237,7 @@ def _get_medias(
             elif added_after and add_date < added_after:
                 after_date_pp = added_after.strftime("%Y-%m-%d")
                 logger.debug(f"{media_pp} was skipped because it was added before {after_date_pp}.")
-            elif views_max_count and media["oid"] not in unwatched:
+            elif views_max_count is not None and media['oid'] not in unwatched:
                 views_after_pp = views_after.strftime("%Y-%m-%d")
                 views_before_pp = views_before.strftime("%Y-%m-%d")
                 logger.debug(
@@ -247,21 +247,12 @@ def _get_medias(
             elif skip_categories and (common_categories := categories.intersection(skip_categories_lowercase)):
                 logger.debug(f"{media_pp} was skipped because it has the categories {common_categories}.")
             else:
-                unwatched_views = unwatched.get(media["oid"])
                 if views_max_count is not None:
-                    if unwatched_views is None:
-                        logger.debug(
-                            f"{media_pp} was skipped because it has been watched \
-                            more than {views_max_count} times over the configured period"
-                        )
-                    else:
-                        media["views_over_period"] = unwatched_views
-                        media["views_after"] = views_after.strftime("%Y-%m-%d")
-                        media["views_before"] = views_before.strftime("%Y-%m-%d")
-                        selected_medias.append(media)
-                else:
-                    media["managers_emails"] = channels.get(media["parent_oid"], {}).get("managers_emails")
-                    selected_medias.append(media)
+                    media["views_over_period"] = unwatched[media['oid']]
+                    media["views_after"] = views_after.strftime("%Y-%m-%d")
+                    media["views_before"] = views_before.strftime("%Y-%m-%d")
+                media["managers_emails"] = channels.get(media["parent_oid"], {}).get("managers_emails")
+                selected_medias.append(media)
 
     storage_used = sum(media["storage_used"] for media in selected_medias)
     logger.info(f"Found {len(selected_medias)} medias matching the given filters (size: {format_size(storage_used)}).")
@@ -736,7 +727,7 @@ def delete_old_medias(sys_args):
     if args.views_before:
         views_before = datetime.strptime(args.views_before, "%Y-%m-%d").date()
 
-    if not any((views_max_count, added_after, added_before)):
+    if views_max_count is None and not any((added_after, added_before)):
         raise MisconfiguredError(
             'At least one filter ("--added-after", "--added-before", "--views-max-count") is required.'
         )

@@ -164,24 +164,28 @@ def api_client(catalog, users):
         elif url == 'catalog/get-all/':
             return catalog
         elif url == 'stats/unwatched/':
+            unwatched_data =  [
+                {
+                    'object_id': 'three_years_ago_no_speaker',
+                    'views_over_period': 1,
+                },
+                {
+                    'object_id': 'three_years_ago_dnd',
+                    'views_over_period': 0,
+                },
+                {
+                    'object_id': 'three_years_ago_mail_error',
+                    'views_over_period': 0,
+                },
+            ]
+
+            views_threshold = kwargs["params"]["views_threshold"]
+            unwatched_filtered = [d for d in unwatched_data if d["views_over_period"] < views_threshold]
             return {
                 'success': True,
                 'start_date': kwargs['params']['sd'],
                 'end_date': kwargs['params']['ed'],
-                'unwatched': [
-                    {
-                        'object_id': 'three_years_ago_no_speaker',
-                        'views_over_period': 0,
-                    },
-                    {
-                        'object_id': 'three_years_ago_dnd',
-                        'views_over_period': 0,
-                    },
-                    {
-                        'object_id': 'three_years_ago_mail_error',
-                        'views_over_period': 0,
-                    },
-                ],
+                'unwatched': unwatched_filtered
             }
         elif url == 'users/':
             if kwargs.get('params', {}).get('offset', 0) == 0:
@@ -361,9 +365,16 @@ def test_delete_old_medias__full_workflow(
             None, None, ['do not delete', 'some_category'],
             1, 5, TWO_YEARS_AGO, ONE_YEAR_AGO,
             [
-                'three_years_ago_no_speaker',
+                #'three_years_ago_no_speaker',
                 'three_years_ago_mail_error',
             ], id='Filter by views count'
+        ),
+        pytest.param(
+            None, None, ['do not delete', 'some_category'],
+            0, 5, TWO_YEARS_AGO, ONE_YEAR_AGO,
+            [
+                'three_years_ago_mail_error',
+            ], id='Filter by views count with 0 max views'
         ),
         pytest.param(
             None, None, ['do not delete', 'some_category'],
@@ -413,7 +424,7 @@ def test_delete_old_medias__selection_filters(
         timeout=120
     )
 
-    if views_max_count:
+    if views_max_count is not None:
         assert next(api_calls) == mock.call(
             'stats/unwatched/',
             params={
