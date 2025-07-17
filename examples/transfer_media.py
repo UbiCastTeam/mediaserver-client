@@ -160,63 +160,67 @@ def extract_metadata_from_zip(zip_path):
         return json.loads(z.read('metadata.json'))
 
 
-def get_personal_subchannel_oid(msc_dest, speaker, subchannel_title, apply=False):
-    def find_user_by_email(email):
-        response = msc_dest.api(
-            'users/',
-            params={
-                'search': email,
-                'search_exact': 'yes',
-                'search_in': 'email',
-            }
-        )
-        return response.get('users', [])
+def find_user_by_email(msc, email):
+    response = msc.api(
+        'users/',
+        params={
+            'search': email,
+            'search_exact': 'yes',
+            'search_in': 'email',
+        }
+    )
+    return response.get('users', [])
 
-    def grant_personal_channel_permission(user_id, email):
-        print(f'Granting personal channel permissions to user {user_id} ({email})')
-        msc_dest.api(
-            'perms/edit/',
-            method='post',
-            data={
-                'type': 'user',
-                'id': user_id,
-                'can_have_personal_channel': 'True',
-                'can_create_media': 'True',
-            }
-        )
 
-    def get_or_create_personal_channel_root(user_id, email):
-        try:
-            response = msc_dest.api('channels/personal/', params={'id': user_id})
+def grant_personal_channel_permission(msc, user_id, email):
+    print(f'Granting personal channel permissions to user {user_id} ({email})')
+    msc.api(
+        'perms/edit/',
+        method='post',
+        data={
+            'type': 'user',
+            'id': user_id,
+            'can_have_personal_channel': 'True',
+            'can_create_media': 'True',
+        }
+    )
+
+
+def get_or_create_personal_channel_root(msc, user_id, email):
+    try:
+        response = msc.api('channels/personal/', params={'id': user_id})
+        return response.get('oid')
+    except Exception as e:
+        if getattr(e, 'status_code', None) == 403:
+            grant_personal_channel_permission(msc, user_id, email)
+            response = msc.api('channels/personal/', params={'id': user_id})
             return response.get('oid')
-        except Exception as e:
-            if getattr(e, 'status_code', None) == 403:
-                grant_personal_channel_permission(user_id, email)
-                response = msc_dest.api('channels/personal/', params={'id': user_id})
-                return response.get('oid')
-            else:
-                print(f'Error retrieving personal channel for user {user_id} ({email}): {e}')
-                return None
+        else:
+            print(f'Error retrieving personal channel for user {user_id} ({email}): {e}')
+            return None
 
-    def get_or_create_personal_subchannel(title, parent_oid, email):
-        try:
-            response = msc_dest.api('channels/get/', params={'title': title, 'parent': parent_oid})
-            return response.get('info', {}).get('oid')
-        except Exception as e:
-            if getattr(e, 'status_code', None) == 404:
-                print(f'Creating subchannel "{title}" under personal channel {parent_oid}')
-                response = msc_dest.api('/channels/add/', method='post', data={'title': title, 'parent': parent_oid})
-                return response.get('oid')
-            else:
-                print(f'Error retrieving personal subchannel "{title}" for user {user_id} ({email}): {e}')
-                return None
 
+def get_or_create_subchannel(msc, title, parent_oid):
+    try:
+        response = msc.api('channels/get/', params={'title': title, 'parent': parent_oid})
+        return response.get('info', {}).get('oid')
+    except Exception as e:
+        if getattr(e, 'status_code', None) == 404:
+            print(f'Creating subchannel "{title}" under channel {parent_oid}')
+            response = msc.api('/channels/add/', method='post', data={'title': title, 'parent': parent_oid})
+            return response.get('oid')
+        else:
+            print(f'Error retrieving subchannel "{title}" under channel {parent_oid}: {e}')
+            return None
+
+
+def get_personal_subchannel_oid(msc, speaker, subchannel_title, apply=False):
     speaker_email = speaker.get('email')
     if not speaker_email:
         print(f'No email for speaker {speaker}, skipping personal channel.')
         return None
 
-    users = find_user_by_email(speaker_email)
+    users = find_user_by_email(msc, speaker_email)
     if not users:
         print(f'No user found with email {speaker_email}')
         return None
@@ -231,13 +235,13 @@ def get_personal_subchannel_oid(msc_dest, speaker, subchannel_title, apply=False
         return 'fakeoid'
 
     print(f'Fetching personal channel for user {user_id} ({speaker_email})')
-    root_oid = get_or_create_personal_channel_root(user_id, speaker_email)
+    root_oid = get_or_create_personal_channel_root(msc, user_id, speaker_email)
     if not root_oid:
         return None
     print(f'Found personal channel root: {root_oid}')
 
     print(f'Fetching personal subchannel "{subchannel_title}" under channel {root_oid}')
-    subchannel_oid = get_or_create_personal_subchannel(subchannel_title, root_oid, speaker_email)
+    subchannel_oid = get_or_create_subchannel(msc, subchannel_title, root_oid)
     if not subchannel_oid:
         return None
     print(f'Found personal subchannel: {subchannel_oid}')
@@ -245,14 +249,10 @@ def get_personal_subchannel_oid(msc_dest, speaker, subchannel_title, apply=False
 
 
 def main():
-    class CustomFormatter(
-        argparse.ArgumentDefaultsHelpFormatter, argparse.RawTextHelpFormatter
-    ):
+    class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawTextHelpFormatter):
         pass
 
-    parser = argparse.ArgumentParser(
-        description=__doc__.strip(), formatter_class=CustomFormatter
-    )
+    parser = argparse.ArgumentParser(description=__doc__.strip(), formatter_class=CustomFormatter)
 
     # Configuration
     config_group = parser.add_argument_group('configuration')
