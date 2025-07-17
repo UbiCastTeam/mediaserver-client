@@ -1,7 +1,7 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mediaserver-api-client.svg)
 ![PyPI](https://img.shields.io/pypi/v/mediaserver-api-client.svg)
 
-# mediaserver-client
+# Nudgis API client
 
 A python3 reference implementation of an UbiCast Nudgis API client.
 Nudgis was called MediaServer in the past but the internal name of Nudgis is still MediaServer.
@@ -9,7 +9,7 @@ Nudgis was called MediaServer in the past but the internal name of Nudgis is sti
 ## Requirements
 
 git
-python >= 3.9 (download the latest stable release from https://www.python.org/downloads/)
+python >= 3.11 (download the latest stable release from https://www.python.org/downloads/)
 
 Optional:
 * python3-venv
@@ -83,12 +83,12 @@ Copy the provided `config.json.example` file into e.g. `myconfig.json`, edit it 
 Linux:
 ```
 $ python3 ./examples/ping.py myconfig.json
-{'success': True, 'mediaserver': '11.1.1'}
+{'success': True, 'mediaserver': '13.1.1'}
 ```
 Windows:
 ```
 $ py ./examples/ping.py myconfig.json
-{'success': True, 'mediaserver': '11.1.1'}
+{'success': True, 'mediaserver': '13.1.1'}
 ```
 
 ## Client class instantiation

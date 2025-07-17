@@ -6,7 +6,6 @@ Copyright 2019, Florent Thiery, Stéphane Diemer
 from json import JSONDecodeError
 import logging
 import time
-from typing import Literal
 
 import requests
 
@@ -285,23 +284,11 @@ class MediaServerClient():
         logger.debug(f'API call duration: {time.time() - begin:.2f} s - {suffix}.')
         return result
 
-    def hls_upload(self, *args, **kwargs):
-        return upload_lib.hls_upload(self, *args, **kwargs)
-
-    def chunked_upload(self, *args, **kwargs):
-        return upload_lib.chunked_upload(self, *args, **kwargs)
-
-    def add_media(self, *args, **kwargs):
-        return content_lib.add_media(self, *args, **kwargs)
-
-    def download_metadata_zip(self, *args, **kwargs):
-        return content_lib.download_metadata_zip(self, *args, **kwargs)
-
-    def remove_all_content(self, *args, **kwargs):
-        return content_lib.remove_all_content(self, *args, **kwargs)
-
-    def import_users_csv(self, *args, **kwargs):
-        return users_csv_lib.import_users_csv(self, *args, **kwargs)
-
-    def get_catalog(self, fmt=Literal['flat', 'tree', 'csv']):
-        return content_lib.get_catalog(self, fmt=fmt)
+    # Methods extensions from lib modules
+    hls_upload = upload_lib.hls_upload
+    chunked_upload = upload_lib.chunked_upload
+    add_media = content_lib.add_media
+    download_metadata_zip = content_lib.download_metadata_zip
+    remove_all_content = content_lib.remove_all_content
+    import_users_csv = users_csv_lib.import_users_csv
+    get_catalog = content_lib.get_catalog
