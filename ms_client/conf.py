@@ -12,14 +12,17 @@ BASE_CONF = {
     'API_KEY': '',
 
     # Client name used as origin name of added media
-    'CLIENT_ID': 'python-api-client',
+    # The "<host>" pattern is replaced by the system hostname
+    'CLIENT_ID': 'python-api-client_<host>',
 
     # Language for API messages
     # Use None to use MediaServer default language
-    # Supported languages are 'en' or 'fr'
+    # Supported languages are:
+    # 'en', 'fr', 'de', 'es', 'nl', 'fi'
     'LANGUAGE': 'en',
 
     # Use a persistent session for requests
+    # This is recommended especially for high availability deployments
     'USE_SESSION': True,
 
     # If failures should be auto-retried N times
