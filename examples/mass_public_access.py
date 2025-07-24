@@ -66,7 +66,7 @@ if __name__ == '__main__':
             if oid:
                 params = {'oid': oid, 'full': 'yes'}
                 try:
-                    print(f'[{index+1}/{total_lines}] About to set {oid} public')
+                    print(f'[{index + 1}/{total_lines}] About to set {oid} public')
                     data = {
                         'oid': oid,
                         'validated': 'yes'

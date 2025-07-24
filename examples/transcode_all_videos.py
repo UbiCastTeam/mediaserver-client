@@ -24,7 +24,7 @@ def transcode_all_videos(msc, purge):
     )
     videos_count = len(videos)
     for index, item in enumerate(videos):
-        print(f'// Media {index+1}/{videos_count}: {item["oid"]}')
+        print(f'// Media {index + 1}/{videos_count}: {item["oid"]}')
         try:
             transcoding_params = {
                 "priority": "low",
