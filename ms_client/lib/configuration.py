@@ -2,10 +2,13 @@
 MediaServer client configuration library
 This module is not intended to be used directly, only the client class should be used.
 """
-from pathlib import Path
 import json
 import logging
 import re
+import socket
+from pathlib import Path
+from typing import Any
+
 from ..conf import BASE_CONF
 
 logger = logging.getLogger(__name__)
@@ -15,7 +18,7 @@ class ConfigurationError(ValueError):
     pass
 
 
-def load_conf(default_conf=None, local_conf=None):
+def load_conf(default_conf: Path | str | dict | None = None, local_conf: Path | str | dict | None = None) -> dict:
     # Copy default configuration
     conf = BASE_CONF.copy()
     # Update with default and local configuration
@@ -59,10 +62,11 @@ def load_conf(default_conf=None, local_conf=None):
             raise ConfigurationError('Unsupported type for configuration.')
     if conf['SERVER_URL'].endswith('/'):
         conf['SERVER_URL'] = conf['SERVER_URL'].rstrip('/')
+    conf['CLIENT_ID'] = conf['CLIENT_ID'].replace('<host>', socket.gethostname())
     return conf
 
 
-def update_conf(local_conf, key, value):
+def update_conf(local_conf: Path | str | dict | None, key: str, value: Any) -> None:
     if isinstance(local_conf, str):
         local_conf = Path(local_conf)
     if not local_conf or not isinstance(local_conf, Path):
@@ -79,14 +83,14 @@ def update_conf(local_conf, key, value):
     logger.info(f'Configuration file "{local_conf}" updated: "{key}" set to "{value}".')
 
 
-def check_conf(conf):
+def check_conf(conf: dict) -> None:
     # Check that mandatory configuration values are set
     if not conf.get('SERVER_URL') or conf['SERVER_URL'] == 'https://mediaserver':
         raise ConfigurationError('The value of "SERVER_URL" is not set. Please configure it.')
     conf['SERVER_URL'] = conf['SERVER_URL'].strip('/')
 
 
-def get_conf_for_unix_user(user):
+def get_conf_for_unix_user(user: str) -> dict:
     user = user.strip()
     if not user:
         raise ConfigurationError('Invalid unix user provided.')
