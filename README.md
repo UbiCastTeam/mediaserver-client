@@ -14,6 +14,9 @@ python >= 3.11 (download the latest stable release from https://www.python.org/d
 Optional:
 * python3-venv
 
+Note:
+If you are using Python3.9, use the branch of the same name.
+
 ## Installation
 
 ### Linux & OSX
