@@ -69,7 +69,7 @@ if __name__ == '__main__':
                 # speaker_id, shared, storage_quota.
                 data = {'email': user_email, 'storage_quota': 0}
                 try:
-                    print(f'[{index+1}/{total_lines}] About to edit {user_email}')
+                    print(f'[{index + 1}/{total_lines}] About to edit {user_email}')
                     msc.api('users/edit/', method='post', data=data)
                     count += 1
                 except Exception as e:

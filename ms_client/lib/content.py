@@ -2,23 +2,34 @@
 MediaServer client content library
 This module is not intended to be used directly, only the client class should be used.
 """
+from __future__ import annotations
+
 import logging
 import zipfile
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, Callable
+if TYPE_CHECKING:
+    from ..client import MediaServerClient
 
 logger = logging.getLogger(__name__)
 
 
-def add_media(client, title=None, file_path=None, progress_callback=None,
-              progress_data=None, timeout=3600, max_retry=None, **kwargs):
+def add_media(
+    client: MediaServerClient,
+    title: str | None = None,
+    file_path: Path | str | None = None,
+    progress_callback: Callable | None = None,
+    progress_data: dict | None = None,
+    timeout: int | None = 3600,
+    max_retry: int | None = None,
+    **metadata
+) -> dict:
     if not title and not file_path:
         raise ValueError('You should give a title or a file to create a media.')
     if file_path is not None:
         file_path = Path(file_path)
         if file_path.stat().st_size == 0:
             raise ValueError('File is empty: %s' % file_path)
-    metadata = kwargs
     metadata['origin'] = client.conf['CLIENT_ID']
     if title:
         metadata['title'] = title
@@ -40,20 +51,28 @@ def add_media(client, title=None, file_path=None, progress_callback=None,
     return response
 
 
-def download_metadata_zip(client, media_oid, path, include_annotations=None, include_resources_links=None,
-                          force=False, timeout=3600, max_retry=None):
+def download_metadata_zip(
+    client: MediaServerClient,
+    media_oid: str,
+    path: Path | str,
+    include_annotations: Literal['all', 'editorial', 'none'] = 'none',
+    include_resources_links: Literal['yes', 'no'] = 'no',
+    force: bool = False,
+    timeout: int | None = 3600,
+    max_retry: int | None = None
+) -> Path:
     if not media_oid:
         raise ValueError('You should give an object id to get the zip file.')
     valid_annotations = ('all', 'editorial', 'none')
-    if include_annotations and include_annotations not in valid_annotations:
+    if include_annotations not in valid_annotations:
         raise ValueError(f'Invalid value given for "include_annotations". Valid values: {valid_annotations}.')
     valid_resources = ('yes', 'no')
-    if include_resources_links and include_resources_links not in valid_resources:
+    if include_resources_links not in valid_resources:
         raise ValueError(f'Invalid value given for "include_resources_links". Valid values: {valid_resources}.')
     params = dict(
         oid=media_oid,
-        annotations=include_annotations or 'none',
-        resources=include_resources_links or 'no'
+        annotations=include_annotations,
+        resources=include_resources_links
     )
     path = Path(path)
     if not force and path.is_file():
@@ -90,7 +109,11 @@ def download_metadata_zip(client, media_oid, path, include_annotations=None, inc
     return path
 
 
-def remove_all_content(client, timeout=None, max_retry=None):
+def remove_all_content(
+    client: MediaServerClient,
+    timeout: int | None = None,
+    max_retry: int | None = None,
+) -> None:
     logger.info('Remove all content')
     channels = client.api('channels/tree/')['channels']
     while client.api('channels/tree')['channels']:
@@ -107,7 +130,11 @@ def remove_all_content(client, timeout=None, max_retry=None):
         channels = client.api('channels/tree/')['channels']
 
 
-def get_catalog(client, fmt=Literal['flat', 'tree', 'csv']):
+def get_catalog(
+    client: MediaServerClient,
+    fmt: Literal['flat', 'tree', 'csv'] = 'flat',
+    timeout: int | None = 120
+) -> dict | str:
     version = client.get_server_version()
     if version >= (12, 3, 0):
         as_tree = (fmt == 'tree')
@@ -116,7 +143,7 @@ def get_catalog(client, fmt=Literal['flat', 'tree', 'csv']):
             'catalog/get-all/',
             params={'format': api_fmt},
             parse_json=(api_fmt == 'json'),
-            timeout=120,
+            timeout=timeout
         )
         if as_tree:
             channels = {channel['oid']: channel for channel in catalog['channels']}
@@ -136,5 +163,5 @@ def get_catalog(client, fmt=Literal['flat', 'tree', 'csv']):
             'catalog/get-all/',
             params={'format': fmt},
             parse_json=(fmt != 'csv'),
-            timeout=120,
+            timeout=timeout
         )
