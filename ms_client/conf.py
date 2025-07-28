@@ -12,14 +12,17 @@ BASE_CONF = {
     'API_KEY': '',
 
     # Client name used as origin name of added media
-    'CLIENT_ID': 'python-api-client',
+    # The "<host>" pattern is replaced by the system hostname
+    'CLIENT_ID': 'python-api-client_<host>',
 
     # Language for API messages
     # Use None to use MediaServer default language
-    # Supported languages are 'en' or 'fr'
+    # Supported languages are:
+    # 'en', 'fr', 'de', 'es', 'nl', 'fi'
     'LANGUAGE': 'en',
 
     # Use a persistent session for requests
+    # This is recommended especially for high availability deployments
     'USE_SESSION': True,
 
     # If failures should be auto-retried N times
@@ -27,7 +30,7 @@ BASE_CONF = {
     'MAX_RETRY': 0,
 
     # List of status codes that should not trigger a retry
-    'RETRY_EXCEPT': [403, 404],
+    'RETRY_EXCEPT': (403, 404),
 
     # Check server SSL(TLS) certificate
     'VERIFY_SSL': False,
@@ -46,10 +49,4 @@ BASE_CONF = {
 
     # Maximum number of files per request
     'UPLOAD_MAX_FILES': 100,
-
-    # External SMTP server config
-    'SMTP_SERVER': None,
-    'SMTP_LOGIN': None,
-    'SMTP_PASSWORD': None,
-    'SMTP_SENDER_EMAIL': None,
 }

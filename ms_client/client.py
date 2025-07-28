@@ -5,8 +5,9 @@ Copyright 2019, Florent Thiery, Stéphane Diemer
 """
 from json import JSONDecodeError
 import logging
+from pathlib import Path
 import time
-from typing import Literal
+from typing import Any, Type
 
 import requests
 
@@ -32,11 +33,11 @@ class MediaServerClient():
     MediaServer API client class
     """
     # `DEFAULT_CONF` can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example).
-    DEFAULT_CONF = None
+    DEFAULT_CONF: Path | str | dict | None = None
     # `RequestError` is a reference to the error class to avoid circular imports in the client lib dir.
-    RequestError = MediaServerRequestError
+    RequestError: Type[MediaServerRequestError] = MediaServerRequestError
 
-    def __init__(self, local_conf=None, setup_logging=True):
+    def __init__(self, local_conf: Path | str | dict | None = None, setup_logging: bool = True):
         # `local_conf` can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
         # Setup logging
         if setup_logging:
@@ -56,28 +57,37 @@ class MediaServerClient():
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         # Request session
-        self.session = None
+        self.session: requests.Session | None = None
 
-    def load_conf(self, local_conf):
+    def load_conf(self, local_conf: Path | str | dict | None) -> dict:
         self.local_conf = local_conf
         self.conf = configuration_lib.load_conf(self.DEFAULT_CONF, self.local_conf)
         self.conf_checked = False
         return self.conf
 
-    def update_conf(self, key, value):
+    def update_conf(self, key: str, value: Any) -> None:
         self.conf[key] = value
         # Write change in local_conf if it is a path
         configuration_lib.update_conf(self.local_conf, key, value)
 
-    def check_conf(self):
+    def check_conf(self) -> None:
         if not self.conf_checked:
             configuration_lib.check_conf(self.conf)
             self.conf_checked = True
 
-    def check_server(self):
+    def get_full_url(self, suffix: str) -> str:
+        return self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
+
+    def get_max_retry(self, max_retry: int | None = None) -> int:
+        value = max_retry if max_retry is not None else (self.conf.get('MAX_RETRY') or 0)
+        if value < 0:
+            raise ValueError('The "max_retry" argument must be greater than or equal 0.')
+        return value
+
+    def check_server(self) -> dict:
         return self.api('/')
 
-    def get_server_version(self):
+    def get_server_version(self) -> tuple[int, ...]:
         if not hasattr(self, '_server_version'):
             try:
                 url = self.get_full_url('/')
@@ -97,12 +107,24 @@ class MediaServerClient():
                 logger.debug(f'MediaServer version is: {self._server_version}')
         return self._server_version
 
-    def request(self, url, method='get', headers=None, params=None, data=None, files=None, parse_json=True,
-                timeout=None, stream=False, ignored_status_codes=None, authenticate=True):
+    def request(
+        self,
+        url: str,
+        method: str = 'get',
+        headers: dict | None = None,
+        params: dict | None = None,
+        data: dict | None = None,
+        files: dict | None = None,
+        parse_json: bool = True,
+        timeout: int | None = None,
+        stream: bool = False,
+        ignored_status_codes: tuple | None = None,
+        authenticate: bool = True
+    ) -> dict | str | requests.Response:
         self.check_conf()
 
         if ignored_status_codes is None:
-            ignored_status_codes = []
+            ignored_status_codes = tuple()
 
         if self.conf['USE_SESSION']:
             if self.session is None:
@@ -210,16 +232,7 @@ class MediaServerClient():
 
         return response
 
-    def get_full_url(self, suffix):
-        return self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
-
-    def get_max_retry(self, max_retry=None):
-        value = max_retry if max_retry is not None else (self.conf.get('MAX_RETRY') or 0)
-        if value < 0:
-            raise ValueError('The "max_retry" argument must be greater than or equal 0.')
-        return value
-
-    def api(self, suffix, *args, **kwargs):
+    def api(self, suffix: str, *args, **kwargs) -> dict | str:
         begin = time.time()
         kwargs['url'] = self.get_full_url(suffix)
         max_retry = self.get_max_retry(kwargs.pop('max_retry', None))
@@ -263,7 +276,6 @@ class MediaServerClient():
                             # 2-tuples (filename, fileobj)
                             # 3-tuples (filename, fileobj, contentype)
                             # 4-tuples (filename, fileobj, contentype, custom_headers)
-
                             files = kwargs['files']
 
                             def is_fd(obj):
@@ -278,6 +290,7 @@ class MediaServerClient():
                                     for item in val:
                                         if is_fd(item):
                                             fd = item
+                                            break
 
                                 if fd:
                                     logger.debug('Seeking file descriptor to 0')
@@ -285,23 +298,11 @@ class MediaServerClient():
         logger.debug(f'API call duration: {time.time() - begin:.2f} s - {suffix}.')
         return result
 
-    def hls_upload(self, *args, **kwargs):
-        return upload_lib.hls_upload(self, *args, **kwargs)
-
-    def chunked_upload(self, *args, **kwargs):
-        return upload_lib.chunked_upload(self, *args, **kwargs)
-
-    def add_media(self, *args, **kwargs):
-        return content_lib.add_media(self, *args, **kwargs)
-
-    def download_metadata_zip(self, *args, **kwargs):
-        return content_lib.download_metadata_zip(self, *args, **kwargs)
-
-    def remove_all_content(self, *args, **kwargs):
-        return content_lib.remove_all_content(self, *args, **kwargs)
-
-    def import_users_csv(self, *args, **kwargs):
-        return users_csv_lib.import_users_csv(self, *args, **kwargs)
-
-    def get_catalog(self, fmt=Literal['flat', 'tree', 'csv']):
-        return content_lib.get_catalog(self, fmt=fmt)
+    # Methods extensions from lib modules
+    hls_upload = upload_lib.hls_upload
+    chunked_upload = upload_lib.chunked_upload
+    add_media = content_lib.add_media
+    download_metadata_zip = content_lib.download_metadata_zip
+    remove_all_content = content_lib.remove_all_content
+    import_users_csv = users_csv_lib.import_users_csv
+    get_catalog = content_lib.get_catalog

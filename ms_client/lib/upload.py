@@ -2,17 +2,29 @@
 MediaServer client upload library
 This module is not intended to be used directly, only the client class should be used.
 """
-from pathlib import Path
+from __future__ import annotations
+
 import logging
 import math
 import time
 import re
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
+if TYPE_CHECKING:
+    from ..client import MediaServerClient
 
 logger = logging.getLogger(__name__)
 
 
-def chunked_upload(client, file_path, remote_path=None, progress_callback=None,
-                   progress_data=None, timeout=300, max_retry=10):
+def chunked_upload(
+    client: MediaServerClient,
+    file_path: Path | str,
+    remote_path: str | None = None,
+    progress_callback: Callable | None = None,
+    progress_data: dict | None = None,
+    timeout: int | None = 300,
+    max_retry: int | None = 10
+) -> str:
     """
     Function to send a file using the chunked upload.
     """
@@ -129,8 +141,15 @@ def chunked_upload(client, file_path, remote_path=None, progress_callback=None,
     return data['upload_id']
 
 
-def hls_upload(client, m3u8_path, remote_dir='', progress_callback=None,
-               progress_data=None, timeout=600, max_retry=10):
+def hls_upload(
+    client: MediaServerClient,
+    m3u8_path: Path | str,
+    remote_dir: str = '',
+    progress_callback: Callable | None = None,
+    progress_data: dict | None = None,
+    timeout: int | None = 600,
+    max_retry: int | None = 10
+) -> str:
     """
     Method to upload an HLS video (m3u8 + ts fragments).
     This method is faster than "chunked_upload" because "chunked_upload" is very slow for a large number of tiny files.

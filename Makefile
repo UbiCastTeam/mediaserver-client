@@ -1,27 +1,40 @@
-DOCKER_RUN ?= docker run \
-	--name ms-client-builder \
-	--workdir /apps \
-	--mount type=bind,src=${PWD},dst=/apps \
-	--user "$(shell id -u):$(shell id -g)" \
-	--rm -it
+DOCKER_IMAGE_NAME ?= ms-client:latest
+DOCKER_WORK_DIR ?= /opt/src
+DOCKER_RUN ?= docker run --rm -it --user "$(shell id -u):$(shell id -g)" -v ${CURDIR}:${DOCKER_WORK_DIR} --name ms-client
+
+build:
+	docker build -t ${DOCKER_IMAGE_NAME} ${BUILD_ARGS} .
+
+rebuild:
+	BUILD_ARGS="--no-cache" make docker_build
+
+shell:
+	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} /bin/sh
 
 lint:
-	${DOCKER_RUN} registry.ubicast.net/docker/flake8:latest make lint_local
+	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} make lint_local
 
 lint_local:
 	flake8 .
 
+typing:
+	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} make typing_local
+
+typing_local:
+	mypy ms_client
+
 deadcode:
-	${DOCKER_RUN} registry.ubicast.net/docker/vulture:latest make deadcode_local
+	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} make deadcode_local
 
 deadcode_local:
 	vulture --exclude .eggs --min-confidence 90 .
 
 test:
-	${DOCKER_RUN} -e "PYTEST_ARGS=${PYTEST_ARGS}" registry.ubicast.net/docker/pytest:latest make test_local
+	${DOCKER_RUN} -e "PYTEST_ARGS=${PYTEST_ARGS}" ${DOCKER_IMAGE_NAME} make test_local
 
+test_local:PYTEST_ARGS := $(or ${PYTEST_ARGS},--cov=ms_client --cov=examples --no-cov-on-fail --junitxml=report.xml --cov-report xml --cov-report term --cov-report html)
 test_local:
-	pytest tests/ -vv --color=yes --log-level=DEBUG --cov=ms_client --cov=examples --no-cov-on-fail ${PYTEST_ARGS}
+	pytest tests/ -vv --color=yes --log-level=DEBUG ${PYTEST_ARGS}
 
 publish:
 	make clean

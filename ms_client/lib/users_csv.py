@@ -2,13 +2,24 @@
 MediaServer client csv library
 This module is not intended to be used directly, only the client class should be used.
 """
+from __future__ import annotations
+
 import logging
 import time
+from pathlib import Path
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..client import MediaServerClient
 
 logger = logging.getLogger(__name__)
 
 
-def import_users_csv(client, csv_path, timeout=None, max_retry=None):
+def import_users_csv(
+    client: MediaServerClient,
+    csv_path: Path | str,
+    timeout: int | None = None,
+    max_retry: int | None = None
+) -> None:
     group_name = f'Users imported from csv on {time.ctime()}'
     group_id = client.api(
         'groups/add/',
@@ -16,8 +27,8 @@ def import_users_csv(client, csv_path, timeout=None, max_retry=None):
         data={'name': group_name}
     ).get('id')
     logger.info(f'Created group {group_name} with id {group_id}')
-    with open(csv_path, 'r') as fo:
-        content = fo.read()
+    path = Path(csv_path)
+    content = path.read_text()
     for index, line in enumerate(content.split('\n')):
         # Skip first line (contains header)
         if line and index > 0:

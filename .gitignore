@@ -35,15 +35,11 @@ pip-delete-this-directory.txt
 *.log
 
 # Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*,cover
-.hypothesis/
+.coverage*
+coverage*
+htmlcov
+report.xml
+.mypy_cache
 .pytest_cache
 
 # Translations
@@ -52,9 +48,6 @@ coverage.xml
 
 # Confs
 conf*.json
-
-# Sphinx documentation
-docs/_build/
 
 # PyBuilder
 target/
