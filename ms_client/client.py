@@ -13,6 +13,7 @@ import requests
 
 from .lib import configuration as configuration_lib
 from .lib import content as content_lib
+from .lib import download as download_lib
 from .lib import upload as upload_lib
 from .lib import users_csv as users_csv_lib
 
@@ -75,8 +76,10 @@ class MediaServerClient():
             configuration_lib.check_conf(self.conf)
             self.conf_checked = True
 
-    def get_full_url(self, suffix: str) -> str:
-        return self.conf['SERVER_URL'] + '/api/v2/' + (suffix.rstrip('/') + '/').lstrip('/')
+    def get_full_url(self, uri: str) -> str:
+        if '://' not in uri:
+            return self.conf['SERVER_URL'] + '/api/v2/' + (uri.rstrip('/') + '/').lstrip('/')
+        return uri
 
     def get_max_retry(self, max_retry: int | None = None) -> int:
         value = max_retry if max_retry is not None else (self.conf.get('MAX_RETRY') or 0)
@@ -232,9 +235,14 @@ class MediaServerClient():
 
         return response
 
-    def api(self, suffix: str, *args, **kwargs) -> dict | str:
+    def api(
+        self,
+        uri: str,
+        *args,
+        **kwargs
+    ) -> dict | str | requests.Response:
         begin = time.time()
-        kwargs['url'] = self.get_full_url(suffix)
+        kwargs['url'] = self.get_full_url(uri)
         max_retry = self.get_max_retry(kwargs.pop('max_retry', None))
         if not max_retry:
             result = self.request(*args, **kwargs)
@@ -249,13 +257,13 @@ class MediaServerClient():
                     # Retry after errors like timeout or RemoteDisconnected errors
                     if err.status_code in self.conf['RETRY_EXCEPT']:
                         logger.error(
-                            f'Request on "{suffix}" failed, tried {tried} times '
+                            f'Request on "{uri}" failed, tried {tried} times '
                             f'(no retry for the status code {err.status_code}).'
                         )
                         raise err
                     elif tried > max_retry:
                         logger.error(
-                            f'Request on "{suffix}" failed, tried {tried} times '
+                            f'Request on "{uri}" failed, tried {tried} times '
                             f'(reached max retry count).'
                         )
                         raise err
@@ -263,7 +271,7 @@ class MediaServerClient():
                         # Wait longer after every attempt
                         delay = 3 * tried * tried
                         logger.error(
-                            f'Request on "{suffix}" failed, tried {tried} times '
+                            f'Request on "{uri}" failed, tried {tried} times '
                             f'(max {max_retry}), retrying in {delay}s.'
                         )
                         time.sleep(delay)
@@ -295,14 +303,16 @@ class MediaServerClient():
                                 if fd:
                                     logger.debug('Seeking file descriptor to 0')
                                     fd.seek(0)
-        logger.debug(f'API call duration: {time.time() - begin:.2f} s - {suffix}.')
+        logger.debug(f'API call duration: {time.time() - begin:.2f} s - {uri}.')
         return result
 
     # Methods extensions from lib modules
-    hls_upload = upload_lib.hls_upload
-    chunked_upload = upload_lib.chunked_upload
     add_media = content_lib.add_media
-    download_metadata_zip = content_lib.download_metadata_zip
-    remove_all_content = content_lib.remove_all_content
-    import_users_csv = users_csv_lib.import_users_csv
+    backup_media = download_lib.backup_media
+    chunked_upload = upload_lib.chunked_upload
+    download_media_best_resource = download_lib.download_media_best_resource
+    download_media_metadata_zip = download_lib.download_media_metadata_zip
     get_catalog = content_lib.get_catalog
+    hls_upload = upload_lib.hls_upload
+    import_users_csv = users_csv_lib.import_users_csv
+    remove_all_content = content_lib.remove_all_content

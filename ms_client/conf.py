@@ -44,6 +44,9 @@ BASE_CONF = {
     # To use a proxy: {'http': 'http://10.10.1.10:3128', 'https': 'http://10.10.1.10:1080'}
     'PROXIES': None,
 
+    # Chunk size for downloads (in bytes)
+    'DOWNLOAD_CHUNK_SIZE': 26214400,
+
     # Chunk size for uploads (in bytes)
     'UPLOAD_CHUNK_SIZE': 26214400,
 
