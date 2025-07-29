@@ -10,6 +10,8 @@ import time
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
+
+from .utils import bytes_repr
 if TYPE_CHECKING:
     from ..client import MediaServerClient
 
@@ -20,8 +22,7 @@ def chunked_upload(
     client: MediaServerClient,
     file_path: Path | str,
     remote_path: str | None = None,
-    progress_callback: Callable | None = None,
-    progress_data: dict | None = None,
+    progress_callback: Callable[[float], None] | None = None,
     timeout: int | None = 300,
     max_retry: int | None = 10
 ) -> str:
@@ -30,6 +31,8 @@ def chunked_upload(
     """
     if remote_path and not re.match(r'^[A-Za-z0-9_-]{10,50}/.+$', remote_path):
         raise ValueError('Invalid "remote_path" argument value.')
+
+    logger.info('Uploading file "%s".', file_path.name)
 
     max_retry = client.get_max_retry(max_retry)
     url_prefix = 'medias/resource/' if client.get_server_version() < (8, 2) else ''
@@ -108,8 +111,7 @@ def chunked_upload(
 
             # Notify progress callback
             if progress_callback:
-                pdata = progress_data or {}
-                progress_callback(0.9 * end_offset / total_size, **pdata)
+                progress_callback(0.9 * end_offset / total_size)
 
             # Get data for next chunk
             if 'upload_id' not in data:
@@ -118,8 +120,8 @@ def chunked_upload(
             end_offset = min(end_offset + chunk_size, total_size - 1)
             chunk = fo.read(chunk_size)
 
-    bandwidth = total_size * 8 / ((time.time() - begin) * 1_000_000)
-    logger.info(f'Upload finished, average bandwidth was {bandwidth:2f} Mbits/s.')
+    bandwidth = total_size / (time.time() - begin)
+    logger.info(f'Upload finished, average bandwidth was {bytes_repr(bandwidth)}/s.')
 
     # Mark file as completed
     data['no_md5'] = 'yes'  # The md5 check is deprecated since 2023-04-20 and has been removed in Nudgis v11.3.1
@@ -136,8 +138,7 @@ def chunked_upload(
 
     # Notify progress callback
     if progress_callback:
-        pdata = progress_data or {}
-        progress_callback(1., **pdata)
+        progress_callback(1.)
     return data['upload_id']
 
 
@@ -145,8 +146,7 @@ def hls_upload(
     client: MediaServerClient,
     m3u8_path: Path | str,
     remote_dir: str = '',
-    progress_callback: Callable | None = None,
-    progress_data: dict | None = None,
+    progress_callback: Callable[[float], None] | None = None,
     timeout: int | None = 600,
     max_retry: int | None = 10
 ) -> str:
@@ -157,6 +157,7 @@ def hls_upload(
     """
     if client.get_server_version() < (8, 2):
         raise RuntimeError('The MediaServer version does not support HLS upload.')
+
     m3u8_path = Path(m3u8_path)
     if not m3u8_path.is_file():
         raise ValueError(f'The given m3u8 file "{m3u8_path}" does not exist.')
@@ -165,6 +166,8 @@ def hls_upload(
         raise ValueError(f'The ts directory "{ts_dir}" of the m3u8 file "{m3u8_path}" does not exist.')
     if remote_dir and not re.match(r'^[A-Za-z0-9_-]{10,50}$', remote_dir):
         raise ValueError('Invalid "remote_dir" argument value.')
+
+    logger.info('Uploading HLS "%s".', m3u8_path.name)
 
     # Get configuration
     max_size = client.conf['UPLOAD_CHUNK_SIZE']
@@ -218,8 +221,7 @@ def hls_upload(
 
             # Notify progress callback
             if progress_callback:
-                pdata = progress_data or {}
-                progress_callback(total_files_count / len(ts_fragments), **pdata)
+                progress_callback(total_files_count / len(ts_fragments))
             files_list = []
             files_size = 0
             if not remote_dir:
@@ -250,14 +252,13 @@ def hls_upload(
         timeout=timeout,
         max_retry=max_retry
     )
-    bandwidth = total_size * 8 / ((time.time() - begin) * 1_000_000)
+    bandwidth = total_size / (time.time() - begin)
     logger.info(
         f'Upload finished ({total_files_count} files in "{remote_dir}"), '
-        f'average bandwidth: {bandwidth:.2f} Mbits/s'
+        f'average bandwidth: {bytes_repr(bandwidth)}/s'
     )
 
     # Notify progress callback
     if progress_callback:
-        pdata = progress_data or {}
-        progress_callback(1., **pdata)
+        progress_callback(1.)
     return remote_dir
