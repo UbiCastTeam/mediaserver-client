@@ -60,5 +60,6 @@ target/
 
 # Backups
 backups
+temp
 
 *.csv
