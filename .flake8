@@ -8,4 +8,4 @@
 [flake8]
 ignore = E265,W503,W505
 max-line-length = 120
-exclude = .git/,.virtualenv/,.env*/,.local/,.eggs/,__pycache__/,build/,dist/,submodules/
+exclude = .git/,.virtualenv/,.venv/,.local/,.eggs/,__pycache__/,build/,dist/,submodules/

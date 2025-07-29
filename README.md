@@ -8,8 +8,8 @@ Nudgis was called MediaServer in the past but the internal name of Nudgis is sti
 
 ## Requirements
 
-git
-python >= 3.11 (download the latest stable release from https://www.python.org/downloads/)
+* git
+* python >= 3.11 (download the latest stable release from https://www.python.org/downloads/)
 
 Optional:
 * python3-venv
@@ -26,8 +26,8 @@ For development, the package can be installed in editable mode to allow changes 
 ```sh
 git clone https://github.com/UbiCastTeam/mediaserver-client.git
 cd mediaserver-client/
-python3 -m venv .env
-source .env/bin/activate  # remember to run this every time you enter the folder and need to restore the environment
+python3 -m venv .venv
+source .venv/bin/activate  # remember to run this every time you enter the folder and need to restore the environment
 python3 -m pip install --editable .
 ```
 
@@ -48,8 +48,8 @@ Python 3.11.1
 * From this project root path, run:
 
 ```
-> py -m venv .env
-> ".env/Scripts/activate.bat"
+> py -m venv .venv
+> ".venv/Scripts/activate.bat"
 > pip install .
 ``` 
  

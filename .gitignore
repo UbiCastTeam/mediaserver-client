@@ -46,6 +46,9 @@ report.xml
 *.mo
 *.pot
 
+# Virtual env
+.venv/
+
 # Confs
 conf*.json
 
