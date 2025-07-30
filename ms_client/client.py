@@ -121,13 +121,9 @@ class MediaServerClient():
         parse_json: bool = True,
         timeout: int | None = None,
         stream: bool = False,
-        ignored_status_codes: tuple | None = None,
         authenticate: bool = True
     ) -> dict | str | requests.Response:
         self.check_conf()
-
-        if ignored_status_codes is None:
-            ignored_status_codes = tuple()
 
         if self.conf['USE_SESSION']:
             if self.session is None:
@@ -219,12 +215,6 @@ class MediaServerClient():
                     error_code=error_code,
                     response=response,
                 )
-            elif ignored_status_codes and status_code in ignored_status_codes:
-                # Ignored status codes do not trigger retries nor raise exceptions
-                logger.info(
-                    f'Not raising exception for ignored status code {status_code} on url {url} ignored: {response}'
-                )
-                return None
             else:
                 raise MediaServerRequestError(
                     f'HTTP {status_code} error on "{url}": {error_message}',
