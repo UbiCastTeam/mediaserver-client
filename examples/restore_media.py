@@ -109,7 +109,7 @@ def _restore_file(msc, path, top_channel_path):
         # CRC check of zip file
         files_with_error = zip_file.testzip()
         if files_with_error:
-            raise Exception('Some files have errors in the zip file: %s' % files_with_error)
+            raise RuntimeError('Some files have errors in the zip file: %s' % files_with_error)
         # Get media metadata
         metadata_json = zip_file.open('metadata.json').read()
         # Check if media is using special resource
@@ -123,7 +123,7 @@ def _restore_file(msc, path, top_channel_path):
                     break
     metadata = json.loads(metadata_json)
     if not metadata.get('path') and not metadata.get('category'):
-        raise Exception('Media has no channel defined in metadata.json file.')
+        raise RuntimeError('Media has no channel defined in metadata.json file.')
     is_new = False
     url = None
     if metadata.get('path') or top_channel_path:
@@ -134,12 +134,15 @@ def _restore_file(msc, path, top_channel_path):
         if old_version:
             print('The server version is too old, unable to check media existence.')
         else:
-            response = msc.api(
-                'medias/get/',
-                params=dict(parents=channel_path, title=metadata['title']),
-                ignored_status_codes=[404]
-            )
-            if response:
+            try:
+                response = msc.api(
+                    'medias/get/',
+                    params=dict(parents=channel_path, title=metadata['title'])
+                )
+            except msc.RequestError as err:
+                if err.status_code != 404:
+                    raise
+            else:
                 oid = response['info']['oid']
                 url = msc.conf['SERVER_URL'] + '/permalink/' + oid + '/'
                 print('Media already exists, it will not be added twice.')
@@ -147,7 +150,7 @@ def _restore_file(msc, path, top_channel_path):
                     # check resource if media is a video
                     resources = msc.api('medias/resources-list/', params=dict(oid=oid))['resources']
                     if not resources:
-                        raise Exception(
+                        raise RuntimeError(
                             'The media already exist but has no resources. '
                             f'Please restore the resource manually in media "{url}".'
                         )
@@ -168,7 +171,7 @@ def _restore_file(msc, path, top_channel_path):
         url = msc.conf['SERVER_URL'] + '/permalink/' + oid + '/'
         is_new = True
     if old_version and special_res:
-        raise Exception(
+        raise RuntimeError(
             'The media metadata have been restored but the media uses a resource that should be restored manually:'
             f'\n{special_res}\nMedia url: {url}'
         )
@@ -216,7 +219,6 @@ if __name__ == '__main__':
 
     msc = MediaServerClient(args.configuration_path)
     msc.get_server_version()
-    msc.conf['TIMEOUT'] = 60  # Increase timeout because backups can be very disk intensive and slow the server
 
     rc = restore_path(msc, args.path, args.channel)
     sys.exit(rc)
