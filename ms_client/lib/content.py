@@ -5,9 +5,9 @@ This module is not intended to be used directly, only the client class should be
 from __future__ import annotations
 
 import logging
-import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Callable
+
 if TYPE_CHECKING:
     from ..client import MediaServerClient
 
@@ -18,8 +18,7 @@ def add_media(
     client: MediaServerClient,
     title: str | None = None,
     file_path: Path | str | None = None,
-    progress_callback: Callable | None = None,
-    progress_data: dict | None = None,
+    progress_callback: Callable[[float], None] | None = None,
     timeout: int | None = 3600,
     max_retry: int | None = None,
     **metadata
@@ -38,7 +37,6 @@ def add_media(
         metadata['code'] = client.chunked_upload(
             file_path,
             progress_callback=progress_callback,
-            progress_data=progress_data,
             max_retry=upload_retry
         )
     response = client.api(
@@ -49,64 +47,6 @@ def add_media(
         max_retry=max_retry
     )
     return response
-
-
-def download_metadata_zip(
-    client: MediaServerClient,
-    media_oid: str,
-    path: Path | str,
-    include_annotations: Literal['all', 'editorial', 'none'] = 'none',
-    include_resources_links: Literal['yes', 'no'] = 'no',
-    force: bool = False,
-    timeout: int | None = 3600,
-    max_retry: int | None = None
-) -> Path:
-    if not media_oid:
-        raise ValueError('You should give an object id to get the zip file.')
-    valid_annotations = ('all', 'editorial', 'none')
-    if include_annotations not in valid_annotations:
-        raise ValueError(f'Invalid value given for "include_annotations". Valid values: {valid_annotations}.')
-    valid_resources = ('yes', 'no')
-    if include_resources_links not in valid_resources:
-        raise ValueError(f'Invalid value given for "include_resources_links". Valid values: {valid_resources}.')
-    params = dict(
-        oid=media_oid,
-        annotations=include_annotations,
-        resources=include_resources_links
-    )
-    path = Path(path)
-    if not force and path.is_file():
-        size = path.stat().st_size
-        req = client.api(
-            'medias/get/zip/',
-            method='head',
-            params=params,
-            timeout=timeout,
-            max_retry=max_retry
-        )
-        if req.headers.get('Content-Length') == str(size):
-            logger.info(
-                'Skipping download of zip file for %s because the file already exists and has the correct size.',
-                media_oid
-            )
-            return path
-    req = client.api(
-        'medias/get/zip/',
-        method='get',
-        params=params,
-        timeout=timeout,
-        max_retry=max_retry,
-        stream=True
-    )
-    with open(path, 'wb') as fo:
-        for chunk in req.iter_content(10000000):  # 10 MB chunks
-            fo.write(chunk)
-
-    # Check that the file is really a zip file
-    zip_file = zipfile.ZipFile(path, 'r')
-    if zip_file.testzip():
-        raise Exception('Invalid zip file')
-    return path
 
 
 def remove_all_content(

@@ -31,6 +31,8 @@ With the example above, here is the before/after location of the migrated media:
     Source path: Channel A/Channel B/v12689655a7a850wrgs8
     Target path: University A/Channel A/Channel B/v12689655a7a850wrgs8
 
+Note: The "/" contained in channels titles will be replaced with "|" (because "/" is used as separator).
+
 Other tools which can help:
 * dump_users_with_personal_media.py : generate a CSV file for provisioning users in the target platform
 * dump_oids.py : generate a text file with all oids of the source platform to use with --oid-file
@@ -40,124 +42,27 @@ Other tools which can help:
 '''
 
 import argparse
-import os
 import shutil
 import sys
 import zipfile
 import json
 from pathlib import Path
 
-import requests
-
 if sys.stdout.isatty():
-    RED = "\033[31m"
-    GREEN = "\033[32m"
-    YELLOW = "\033[33m"
-    BLUE = "\033[34m"
-    MAGENTA = "\033[35m"
-    RESET = "\033[0m"
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    PURPLE = '\033[35m'
+    TEAL = '\033[36m'
+    RESET = '\033[0m'
 else:
-    RED = GREEN = YELLOW = BLUE = MAGENTA = RESET = ""
-
-
-def download_file(url, local_filename, verify):
-    with requests.get(url, stream=True, verify=verify) as r:
-        r.raise_for_status()
-        total_size = int(r.headers.get('content-length'))
-        downloaded_size = 0
-        with open(local_filename, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                downloaded_size += len(chunk)
-                print(f'Downloading {(100 * downloaded_size / total_size):.1f}%', end='\r')
-                f.write(chunk)
-    print('Download finished ')
-    return local_filename
-
-
-def backup_media(msc, oid, temp_path):
-    if not oid.startswith('v'):
-        raise Exception(f'oid {oid} is not a VOD')
-
-    finished_marker = temp_path / 'finished.marker'
-    if finished_marker.is_file():
-        print(f'Skipping {temp_path} download: already done')
-        return Path(finished_marker.open().read())
-
-    temp_path.mkdir(parents=True)
-    item = msc.api('medias/get/', params={'oid': oid})['info']
-    meta_path = download_media_metadata(msc, item, temp_path, oid)
-    res_path = download_media_best_resource(msc, item, temp_path, oid)
-
-    zip_file = zipfile.ZipFile(meta_path, 'a')
-    print(f'Embedding {res_path} into {meta_path}')
-    zip_file.write(res_path, os.path.basename(res_path))
-    zip_file.close()
-
-    finished_marker.open('w').write(meta_path)
-    print(f'media {oid} downloaded to {meta_path}')
-    return meta_path
-
-
-def download_media_best_resource(msc, item, media_download_dir, file_prefix):
-    params = {
-        'oid': item['oid'],
-    }
-    resources = msc.api('medias/resources-list/', params=params)['resources']
-    resources.sort(key=lambda a: -a['file_size'])
-    if not resources:
-        print('Media has no resources.')
-        return
-    best_quality = None
-    for r in resources:
-        if r['format'] != 'm3u8':
-            best_quality = r
-            break
-    if not best_quality:
-        raise Exception(f'Could not download any resource from list: {resources}')
-
-    print(f'Best quality file for video {item["oid"]}: {best_quality["path"]}')
-    destination_resource = os.path.join(
-        media_download_dir,
-        'resource - %s - %sx%s.%s'
-        % (
-            file_prefix,
-            best_quality['width'],
-            best_quality['height'],
-            best_quality['format'],
-        ),
-    )
-
-    if best_quality['format'] in ('youtube', 'embed'):
-        # dump youtube video id or embed code to a file
-        with open(destination_resource, 'w') as fo:
-            fo.write(best_quality['file'])
-    else:
-        # download resource
-        resource_url = msc.api(
-            'download/',
-            params=dict(oid=item['oid'], url=best_quality['path'], redirect='no'),
-        )['url']
-
-        print(f'Will download file to "{destination_resource}".')
-        download_file(resource_url, destination_resource, verify=msc.conf['VERIFY_SSL'])
-    return destination_resource
-
-
-def download_media_metadata(msc, item, media_download_dir, file_prefix):
-    metadata_zip_path = media_download_dir / f'{file_prefix}.zip'
-    path = msc.download_metadata_zip(
-        item['oid'],
-        metadata_zip_path,
-        include_annotations='all',
-        include_resources_links='no',
-    )
-    print(f"Metadata downloaded for media {item['oid']}: '{path}'.")
-    return str(path)
+    RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = RESET = ''
 
 
 def extract_metadata_from_zip(zip_path):
-    with zipfile.ZipFile(zip_path) as z:
-        return json.loads(z.read('metadata.json'))
+    with zipfile.ZipFile(zip_path) as zf:
+        return json.loads(zf.read('metadata.json'))
 
 
 def find_user_by_email(msc, email):
@@ -258,12 +163,14 @@ def main():
     config_group = parser.add_argument_group('configuration')
     config_group.add_argument(
         '--conf-src',
+        dest='conf_src',
         help='Path to the source platform configuration file.',
         required=True,
         type=str,
     )
     config_group.add_argument(
         '--conf-dest',
+        dest='conf_dest',
         help='Path to the destination platform configuration file.',
         required=True,
         type=str,
@@ -273,12 +180,14 @@ def main():
     media_group = parser.add_argument_group('media selection')
     media_group.add_argument(
         '--oid',
+        dest='oid_list',
         help='OID of the media to transfer. Can be specified multiple times.',
         type=str,
         action='append',
     )
     media_group.add_argument(
         '--oid-file',
+        dest='oid_file',
         help='Path to a file containing one OID per line.',
         type=Path,
     )
@@ -287,6 +196,7 @@ def main():
     migration_group = parser.add_argument_group('migration options')
     migration_group.add_argument(
         '--root-channel',
+        dest='root_channel',
         help=(
             'Optional root channel title or path on the destination platform where media will be placed into.\n'
             'Can contain multiple channels (mspath-like), like A/B/C\n'
@@ -299,6 +209,7 @@ def main():
     )
     migration_group.add_argument(
         '--no-transcode',
+        dest='no_transcode',
         help=(
             'Disable media transcoding on the destination platform'
         ),
@@ -316,6 +227,7 @@ def main():
     )
     migration_group.add_argument(
         '--source-personal-channels-root-title',
+        dest='source_personal_channels_root_title',
         help=(
             'Title of the root of personal channels on the source platform '
             '(it depends on the source platform default langage and cannot be auto-detected).\n'
@@ -326,6 +238,7 @@ def main():
     )
     migration_group.add_argument(
         '--personal-subchannel-title',
+        dest='personal_subchannel_title',
         help=(
             'Title of the subchannel of personal channel to create on the destination platform '
             'if using --migrate-into-personal-channels.\n'
@@ -342,17 +255,20 @@ def main():
     runtime_group = parser.add_argument_group('runtime options')
     runtime_group.add_argument(
         '--temp-path',
+        dest='temp_path',
         help='Temporary folder to use during media migration.',
         default=Path('temp'),
         type=Path,
     )
     runtime_group.add_argument(
-        '--delete-temp',
-        help='If set, deletes the temporary directory after processing each media item.',
+        '--keep-temp',
+        dest='keep_temp',
+        help='If set, the temporary directory for media processing will be kept.',
         action='store_true',
     )
     runtime_group.add_argument(
         '--apply',
+        dest='apply',
         help='Whether to apply changes',
         action='store_true',
     )
@@ -379,8 +295,8 @@ def main():
             oids_src.extend(file_oids)
 
     # Append OIDs passed via CLI
-    if args.oid:
-        oids_src.extend(args.oid)
+    if args.oid_list:
+        oids_src.extend(args.oid_list)
 
     # OIDs check
     oid_src_count = len(oids_src)
@@ -411,11 +327,16 @@ def main():
             skipped.append(oid_src)
             continue
 
+        media_temp_dir = args.temp_path / oid_src
+
         # Retrieve media
-        print(f'{MAGENTA}:: Download{RESET}')
-        media_download_dir = args.temp_path / oid_src
         try:
-            zip_path = backup_media(msc_src, oid_src, media_download_dir)
+            print(f'{PURPLE}:: Download{RESET}')
+            zip_path = msc_src.backup_media(
+                {'oid': oid_src},
+                dir_path=media_temp_dir,
+                should_be_playable=args.no_transcode
+            )
         except Exception as e:
             error = f'Failed to backup media {oid_src}: {e}, ignoring for now'
             print(error)
@@ -424,74 +345,85 @@ def main():
             continue
 
         # Prepare for upload
-        print(f'{MAGENTA}:: Compute{RESET}')
-        metadata = extract_metadata_from_zip(zip_path)
+        try:
+            print(f'{PURPLE}:: Compute{RESET}')
+            metadata = extract_metadata_from_zip(zip_path)
 
-        # Define target channel
-        src_path = metadata['path']
+            # Define target channel
+            src_path = metadata['path']
 
-        def print_progress(progress):
-            print(f'Uploading: {progress * 100:.1f}%', end='\r')
+            upload_args = {
+                'file_path': zip_path,
+                'external_ref': external_ref,
+                'own_media': 'no',
+                'skip_automatic_subtitles': 'yes',
+                'skip_automatic_enrichments': 'yes',
+                'transcode': 'no' if args.no_transcode else 'yes',
+                'priority': 'low',
+            }
 
-        upload_args = {
-            'file_path': zip_path,
-            'progress_callback': print_progress,
-            'external_ref': external_ref,
-            'own_media': 'no',
-            'skip_automatic_subtitles': 'yes',
-            'skip_automatic_enrichments': 'yes',
-            'transcode': 'no' if args.no_transcode else 'yes',
-            'priority': 'low',
-        }
+            # Migrate into personal channels if needed
+            if (
+                args.migrate_into_personal_channels
+                and (speaker := metadata.get('speaker'))
+                and args.source_personal_channels_root_title in src_path
+            ):
+                print('Media located in personal channel')
+                # Retrieve of create related personal subchannel
+                personal_subchannel_oid = get_personal_subchannel_oid(
+                    msc_dest,
+                    speaker,
+                    args.personal_subchannel_title,
+                    apply=args.apply
+                )
 
-        # Migrate into personal channels if needed
-        if (
-            args.migrate_into_personal_channels
-            and (speaker := metadata.get('speaker'))
-            and args.source_personal_channels_root_title in src_path
-        ):
-            print('Media located in personal channel')
-            # Retrieve of create related personal subchannel
-            personal_subchannel_oid = get_personal_subchannel_oid(
-                msc_dest,
-                speaker,
-                args.personal_subchannel_title,
-                apply=args.apply
-            )
+                # upload in personal subchannel
+                if personal_subchannel_oid:
+                    upload_args['channel'] = personal_subchannel_oid
+            else:
+                print('Media located out of a personal channel')
 
-            # upload in personal subchannel
-            if personal_subchannel_oid:
-                upload_args['channel'] = personal_subchannel_oid
-        else:
-            print('Media located out of a personal channel')
+            # Use custom root channel if specified
+            if not upload_args.get('channel') and args.root_channel:
+                upload_args['channel'] = f'mscpath-{args.root_channel}/{src_path}'
+            # Else:
+            #   No channel is provided, the original path will be preserved automatically
+        except Exception as e:
+            error = f'Failed to get destination for media {oid_src}: {e}, ignoring for now'
+            print(error)
+            print(f'{RED}Failed{RESET}')
+            failed.append(error)
+            continue
 
-        # Use custom root channel if specified
-        if not upload_args.get('channel') and args.root_channel:
-            upload_args['channel'] = f'mscpath-{args.root_channel}/{src_path}'
-        # Else:
-        #   No channel is provided, the original path will be preserved automatically
+        # Upload media
+        try:
+            print(f'{PURPLE}:: Upload{RESET}')
+            if args.apply:
+                try:
+                    resp = msc_dest.add_media(**upload_args)
+                    oid_dest = resp['oid']
+                    if resp['success']:
+                        print(f'File {zip_path} upload finished, object id is {oid_dest}')
+                    else:
+                        print(f'Upload of {zip_path} failed: {resp}')
+                except Exception as e:
+                    if '504' in str(e):
+                        print(f'File {zip_path} upload finished but got code 504 (timeout); assuming it was processed.')
+                        pass
+                    else:
+                        raise e
+            else:
+                print(f'[Dry run] Would upload {zip_path} with {upload_args}')
+        except Exception as e:
+            error = f'Failed to upload media {oid_src}: {e}, ignoring for now'
+            print(error)
+            print(f'{RED}Failed{RESET}')
+            failed.append(error)
+            continue
 
-        print(f'{MAGENTA}:: Upload{RESET}')
-        if args.apply:
-            try:
-                resp = msc_dest.add_media(**upload_args)
-                oid_dest = resp['oid']
-                if resp['success']:
-                    print(f'File {zip_path} upload finished, object id is {oid_dest}')
-                else:
-                    print(f'Upload of {zip_path} failed: {resp}')
-            except Exception as e:
-                if '504' in str(e):
-                    print(f'File {zip_path} upload finished but got code 504 (timeout); assuming it was processed.')
-                    pass
-                else:
-                    raise e
-        else:
-            print(f'[Dry run] Would upload {zip_path} with {upload_args}')
-
-        if args.delete_temp and media_download_dir.exists():
-            print(f'Deleting {media_download_dir}')
-            shutil.rmtree(media_download_dir)
+        if not args.keep_temp and media_temp_dir.exists():
+            print(f'Deleting {media_temp_dir}')
+            shutil.rmtree(media_temp_dir)
 
         print(f'{GREEN}Success{RESET}')
         done.append(oid_src)
@@ -502,10 +434,11 @@ def main():
         f'{RED}failed {len(failed)}{RESET}'
         '\n'.join(failed)
     )
+    return 1 if failed else 0
 
 
 if __name__ == '__main__':
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.append(str(Path(__file__).resolve().parent.parent))
     from ms_client.client import MediaServerClient
 
-    main()
+    sys.exit(main())
