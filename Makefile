@@ -43,7 +43,7 @@ publish:
 		-e "TWINE_USERNAME=${TWINE_USERNAME}" \
 		-e "TWINE_PASSWORD=${TWINE_PASSWORD}" \
 		-v ${PWD}/.local:/.local \
-		registry.ubicast.net/docker/pytest:latest make publish_local
+		${DOCKER_IMAGE_NAME} make publish_local
 
 publish_local:
 	test -z "${TWINE_USERNAME}" \
