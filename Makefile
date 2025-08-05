@@ -44,6 +44,7 @@ publish:
 		-e "TWINE_PASSWORD=${TWINE_PASSWORD}" \
 		-v ${PWD}/.local:/.local \
 		${DOCKER_IMAGE_NAME} make publish_local
+	@rm -rf .local
 
 publish_local:
 	test -z "${TWINE_USERNAME}" \
