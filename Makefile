@@ -32,9 +32,9 @@ deadcode_local:
 test:
 	${DOCKER_RUN} -e "PYTEST_ARGS=${PYTEST_ARGS}" ${DOCKER_IMAGE_NAME} make test_local
 
-test_local:PYTEST_ARGS := $(or ${PYTEST_ARGS},--cov=ms_client --cov=examples --no-cov-on-fail --junitxml=report.xml --cov-report xml --cov-report term --cov-report html)
+test_local:PYTEST_ARGS := $(or ${PYTEST_ARGS},--cov --cov=examples --no-cov-on-fail --junitxml=report.xml --cov-report xml --cov-report term --cov-report html)
 test_local:
-	pytest tests/ -vv --color=yes --log-level=DEBUG ${PYTEST_ARGS}
+	pytest ${PYTEST_ARGS}
 
 publish:
 	make clean
