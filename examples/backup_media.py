@@ -44,10 +44,10 @@ def get_repr(item):
 
 
 def get_prefix(item):
-    return unidecode.unidecode(item['title'][:57].strip()).replace('/', '|') + ' - ' + item['oid']
+    return unidecode.unidecode(item['title'][:57].strip()).replace('/', '|').replace('\\', '|') + ' - ' + item['oid']
 
 
-def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=False):
+def make_backup(msc, dir_path, limit_date, as_tree=False, use_add_date=False, enable_delete=False):
     print('Starting backups...')
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
@@ -71,7 +71,7 @@ def make_backup(msc, dir_path, limit_date, use_add_date=False, enable_delete=Fal
                     get_repr(item), item['creation'], limit_date))
             else:
                 try:
-                    msc.backup_media(item, dir_path)
+                    msc.backup_media(item, dir_path, replicate_tree=as_tree)
                 except Exception as err:
                     print(f'{RED}{err}{RESET}')
                     failed.append((item, str(err)))
@@ -139,6 +139,12 @@ if __name__ == '__main__':
         help='Directory in which backuped media should be added.',
         type=str)
     parser.add_argument(
+        '--tree',
+        action='store_true',
+        default=False,
+        dest='as_tree',
+        help='Place backuped media in sub directories depending on the channels path of the media.')
+    parser.add_argument(
         '--use-add-date',
         action='store_true',
         default=False,
@@ -175,5 +181,5 @@ if __name__ == '__main__':
     # Increase default timeout because backups can be very disk intensive and slow the server
     msc.conf['TIMEOUT'] = max(60, msc.conf['TIMEOUT'])
 
-    rc = make_backup(msc, args.dir_path, limit_date, args.use_add_date, args.enable_delete)
+    rc = make_backup(msc, args.dir_path, limit_date, args.as_tree, args.use_add_date, args.enable_delete)
     sys.exit(rc)

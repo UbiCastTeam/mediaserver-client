@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_prefix(item: dict) -> str:
-    return unidecode.unidecode((item.get('title', '')[:57]).replace('/', '|') + ' - ').strip(' -') + item['oid']
+    return unidecode.unidecode((item.get('title', '')[:57]).replace('/', '|').strip(' -') + ' - ') + item['oid']
 
 
 def download_media_metadata_zip(
@@ -158,7 +158,7 @@ def download_media_best_resource(
     dir_path.mkdir(parents=True, exist_ok=True)
     if not file_prefix:
         file_prefix = get_prefix(media_item)
-    path = dir_path / f'{file_prefix} - {best_quality["width"]}x{best_quality["height"]}.{best_quality["format"]}'
+    path = dir_path / f'{file_prefix}-{best_quality["width"]}x{best_quality["height"]}.{best_quality["format"]}'
 
     if current_size is None and path.is_file():
         current_size = path.stat().st_size
@@ -253,7 +253,7 @@ def backup_media(
             for name in zip_file.namelist():
                 if name == 'metadata-size.txt':
                     metadata_zip_size = int(zip_file.open(name).read())
-                elif name.startswith('resource -'):
+                elif name.startswith('resource-'):
                     file_info = zip_file.getinfo(name)
                     best_resource_size = file_info.file_size
         logger.info(
@@ -300,7 +300,7 @@ def backup_media(
             zf.writestr('metadata-size.txt', str(metadata_size))
             zf.writestr('metadata-path.txt', '/'.join(media_chan_path))
             if res_path:
-                zf.write(res_path, res_path.name)
+                zf.write(res_path, 'resource' + res_path.name.removeprefix(tmp_prefix))
 
         # CRC check of the zip file
         with zipfile.ZipFile(meta_path, 'r') as zf:
