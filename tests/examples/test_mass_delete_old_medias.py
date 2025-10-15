@@ -164,30 +164,36 @@ def api_client(catalog, users):
         elif url == 'catalog/get-all/':
             return catalog
         elif url == 'stats/unwatched/':
+            unwatched_data =  [
+                {
+                    'object_id': 'three_years_ago_no_speaker',
+                    'views_over_period': 1,
+                },
+                {
+                    'object_id': 'three_years_ago_dnd',
+                    'views_over_period': 0,
+                },
+                {
+                    'object_id': 'three_years_ago_mail_error',
+                    'views_over_period': 0,
+                },
+            ]
+
+            views_threshold = kwargs["params"]["views_threshold"]
+            unwatched_filtered = [d for d in unwatched_data if d["views_over_period"] < views_threshold]
             return {
                 'success': True,
                 'start_date': kwargs['params']['sd'],
                 'end_date': kwargs['params']['ed'],
-                'unwatched': [
-                    {
-                        'object_id': 'three_years_ago_no_speaker',
-                        'views_over_period': 0,
-                    },
-                    {
-                        'object_id': 'three_years_ago_dnd',
-                        'views_over_period': 0,
-                    },
-                    {
-                        'object_id': 'three_years_ago_mail_error',
-                        'views_over_period': 0,
-                    },
-                ],
+                'unwatched': unwatched_filtered
             }
         elif url == 'users/':
             if kwargs.get('params', {}).get('offset', 0) == 0:
                 return {'users': users}
             else:
                 return {'users': []}
+        elif url == 'info/':
+            return {"data": {"trash_enabled": True}}
 
     from ms_client.client import MediaServerClient
 
@@ -221,6 +227,12 @@ class MockSMTP:
         assert password == 's3cr3t'
         self._logged_in = True
 
+    def starttls(self, context):
+        pass
+
+    def quit(self):
+        pass
+
     def sendmail(self, sender, recipient, message):
         assert self._logged_in
         if recipient == 'error@example.com':
@@ -241,7 +253,7 @@ class MockSMTP:
 @pytest.fixture()
 def mock_smtp():
     mock_smtp = MockSMTP()
-    with mock.patch('smtplib.SMTP_SSL', autospec=True, return_value=mock_smtp):
+    with mock.patch('smtplib.SMTP', autospec=True, return_value=mock_smtp):
         yield mock_smtp
 
 
@@ -307,16 +319,19 @@ def test_delete_old_medias__full_workflow(
     for recipient, oids in expected_sent_mails:
         assert mock_smtp.has_mail('sender@example.com', recipient, oids)
 
+    if apply:
+        assert api_client.api.call_args_list.pop(0) == mock.call('info/')
+
     # Check api calls and deleted oids
-    assert api_client.api.call_count == 2 if expected_deleted_oids else 1
-    assert api_client.api.call_args_list[0] == mock.call(
+    assert api_client.api.call_count == 3 if expected_deleted_oids else 2
+    assert api_client.api.call_args_list.pop(0) == mock.call(
         'catalog/get-all/',
         params={'format': 'json'},
         parse_json=True,
         timeout=120
     )
     if expected_deleted_oids:
-        assert api_client.api.call_args_list[1] == mock.call(
+        assert api_client.api.call_args_list.pop(0) == mock.call(
             'catalog/bulk_delete/',
             method='post',
             data=dict(oids=expected_deleted_oids)
@@ -350,9 +365,16 @@ def test_delete_old_medias__full_workflow(
             None, None, ['do not delete', 'some_category'],
             1, 5, TWO_YEARS_AGO, ONE_YEAR_AGO,
             [
-                'three_years_ago_no_speaker',
+                #'three_years_ago_no_speaker',
                 'three_years_ago_mail_error',
             ], id='Filter by views count'
+        ),
+        pytest.param(
+            None, None, ['do not delete', 'some_category'],
+            0, 5, TWO_YEARS_AGO, ONE_YEAR_AGO,
+            [
+                'three_years_ago_mail_error',
+            ], id='Filter by views count with 0 max views'
         ),
         pytest.param(
             None, None, ['do not delete', 'some_category'],
@@ -392,6 +414,9 @@ def test_delete_old_medias__selection_filters(
     delete_old_medias(params)
 
     api_calls = iter(api_client.api.call_args_list)
+
+    assert next(api_calls) == mock.call('info/')
+
     assert next(api_calls) == mock.call(
         'catalog/get-all/',
         params={'format': 'json'},
@@ -399,7 +424,7 @@ def test_delete_old_medias__selection_filters(
         timeout=120
     )
 
-    if views_max_count:
+    if views_max_count is not None:
         assert next(api_calls) == mock.call(
             'stats/unwatched/',
             params={
