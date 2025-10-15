@@ -50,4 +50,4 @@ log_level = "DEBUG"
 testpaths = "tests/"
 
 [tool.coverage.run]
-source_dirs = ["ms_client"]
+source_dirs = ["ms_client", "examples"]
