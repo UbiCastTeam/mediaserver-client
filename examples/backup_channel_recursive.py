@@ -47,7 +47,7 @@ def get_prefix(item):
     return unidecode.unidecode(item['title'][:57].strip()).replace('/', '|') + ' - ' + item['oid']
 
 
-def process_channel(msc, channel_info, dir_path, backuped, failed):
+def process_channel(msc, channel_info, dir_path, backuped, failed, as_tree=False):
     # Browse channels from channel parent
     channel_items = msc.api(
         'channels/content/',
@@ -58,7 +58,7 @@ def process_channel(msc, channel_info, dir_path, backuped, failed):
     # Check sub channels
     for item in channel_items.get('channels', []):
         print('Check videos in channel %s %s' % (item['oid'], item['title']))
-        process_channel(msc, item, dir_path, backuped, failed)
+        process_channel(msc, item, dir_path, backuped, failed, as_tree)
 
     # Backup videos and photos
     items = channel_items.get('videos', []) + channel_items.get('photos_groups', [])
@@ -66,7 +66,7 @@ def process_channel(msc, channel_info, dir_path, backuped, failed):
         media_link = msc.conf['SERVER_URL'] + '/permalink/' + item['oid'] + '/'
         print(f'// {PURPLE}{get_repr(item)}{RESET} {media_link}')
         try:
-            msc.backup_media(item, dir_path)
+            msc.backup_media(item, dir_path, replicate_tree=as_tree)
         except Exception as err:
             print(f'{RED}{err}{RESET}')
             failed.append((item, str(err)))
@@ -75,7 +75,7 @@ def process_channel(msc, channel_info, dir_path, backuped, failed):
             backuped.append(item)
 
 
-def backup_media_from_channel(msc, channel_oid, dir_path):
+def backup_media_from_channel(msc, channel_oid, dir_path, as_tree=False):
     print('Starting backups...')
 
     if not os.path.exists(dir_path):
@@ -94,7 +94,7 @@ def backup_media_from_channel(msc, channel_oid, dir_path):
         )
         return 1
 
-    process_channel(msc, channel_parent['info'], dir_path, backuped, failed)
+    process_channel(msc, channel_parent['info'], dir_path, backuped, failed, as_tree)
 
     if backuped:
         print('%sMedia backuped successfully (%s):%s' % (GREEN, len(backuped), RESET))
@@ -125,14 +125,18 @@ if __name__ == '__main__':
         help='Path to the configuration file.',
         required=True,
         type=str)
-
     parser.add_argument(
         '--directory',
         default='backups',
         dest='dir_path',
         help='Directory in which backuped media should be added.',
         type=str)
-
+    parser.add_argument(
+        '--tree',
+        action='store_true',
+        default=False,
+        dest='as_tree',
+        help='Place backuped media in sub directories depending on the channels path of the media.')
     parser.add_argument(
         '--channel',
         dest='channel_oid',
@@ -156,5 +160,5 @@ if __name__ == '__main__':
     # Increase default timeout because backups can be very disk intensive and slow the server
     msc.conf['TIMEOUT'] = max(60, msc.conf['TIMEOUT'])
 
-    rc = backup_media_from_channel(msc, args.channel_oid, args.dir_path)
+    rc = backup_media_from_channel(msc, args.channel_oid, args.dir_path, args.as_tree)
     sys.exit(rc)
