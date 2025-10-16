@@ -3,12 +3,8 @@
 '''
 Script to get the size used by all resources of media in a given channel or in whole catalog if no channel is specified.
 The API key used to run this script must have the permission to access resources tab and all media.
-
-To use this script clone MediaServer client and put this file in a sub dir in the client dir.
-git clone https://github.com/UbiCastTeam/mediaserver-client
-mkdir examples
-mv "this file" mediaserver-client/examples
 '''
+import argparse
 import os
 import sys
 
@@ -46,13 +42,27 @@ if __name__ == '__main__':
     from ms_client.client import MediaServerClient
     from ms_client.lib.utils import format_bytes
 
-    local_conf = sys.argv[1] if len(sys.argv) > 1 else None
-    msc = MediaServerClient(local_conf)
+    parser = argparse.ArgumentParser(description=__doc__.strip())
+    parser.add_argument(
+        '--conf',
+        dest='conf',
+        help='Path to the configuration file.',
+        default=None,
+        type=str
+    )
+    parser.add_argument(
+        '--channel',
+        dest='channel',
+        help='Object id of the channel to get size from.',
+        default='',
+        type=str
+    )
+    args = parser.parse_args()
+
+    msc = MediaServerClient(args.conf)
     msc.check_server()
 
-    channel_oid = sys.argv[2] if len(sys.argv) > 2 else ''
-
-    info = get_channel_size(msc, channel_oid)
+    info = get_channel_size(msc, args.channel)
     print('')
     print('Channel info:')
     print('  - Total resources size: %s (attachments and slides not included)' % format_bytes(info['size']))

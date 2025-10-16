@@ -183,7 +183,7 @@ def delete_unwatched_vods(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__.strip())
 
     parser.add_argument(
         "--conf",

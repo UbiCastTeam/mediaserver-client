@@ -4,6 +4,7 @@
 Script to browse all videos and if external_ref is present, add it to a redirection CSV file:
 external_ref, oid
 '''
+import argparse
 import os
 import sys
 import csv
@@ -28,8 +29,17 @@ if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
 
-    local_conf = sys.argv[1] if len(sys.argv) > 1 else None
-    msc = MediaServerClient(local_conf)
+    parser = argparse.ArgumentParser(description=__doc__.strip())
+    parser.add_argument(
+        'conf',
+        default=None,
+        help='The configuration to use.',
+        nargs='?',
+        type=str,
+    )
+    args = parser.parse_args()
+
+    msc = MediaServerClient(args.conf)
     msc.check_server()
 
     regen_redirections_file(msc)

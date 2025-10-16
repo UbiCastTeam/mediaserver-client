@@ -168,7 +168,7 @@ if __name__ == '__main__':
     from ms_client.client import MediaServerClient
     from ms_client.lib.utils import TTYColors as C
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__.strip())
 
     parser.add_argument(
         '--conf',
