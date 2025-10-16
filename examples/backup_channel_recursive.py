@@ -16,35 +16,6 @@ python3 examples/backup_media_from_channel.py --conf conf.json --channel c126195
 import argparse
 import os
 import sys
-import unidecode
-
-# Terminal colors
-if sys.stdout.isatty():
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    PURPLE = '\033[35m'
-    TEAL = '\033[36m'
-    RESET = '\033[0m'
-else:
-    RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = RESET = ''
-
-
-OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
-
-
-def get_repr(item):
-    return '%s %s "%s%s"' % (
-        OBJECT_TYPES[item['oid'][0]],
-        item['oid'],
-        item['title'][:40],
-        ('...' if len(item['title']) > 40 else '')
-    )
-
-
-def get_prefix(item):
-    return unidecode.unidecode(item['title'][:57].strip()).replace('/', '|') + ' - ' + item['oid']
 
 
 def process_channel(msc, channel_info, dir_path, backuped, failed, as_tree=False):
@@ -64,14 +35,14 @@ def process_channel(msc, channel_info, dir_path, backuped, failed, as_tree=False
     items = channel_items.get('videos', []) + channel_items.get('photos_groups', [])
     for item in items:
         media_link = msc.conf['SERVER_URL'] + '/permalink/' + item['oid'] + '/'
-        print(f'// {PURPLE}{get_repr(item)}{RESET} {media_link}')
+        print(f'// {C.PURPLE}{get_item_repr(item)}{C.RESET} {media_link}')
         try:
             msc.backup_media(item, dir_path, replicate_tree=as_tree)
         except Exception as err:
-            print(f'{RED}{err}{RESET}')
+            print(f'{C.RED}{err}{C.RESET}')
             failed.append((item, str(err)))
         else:
-            print(f'{GREEN}Backuped{RESET}')
+            print(f'{C.GREEN}Backuped{C.RESET}')
             backuped.append(item)
 
 
@@ -97,17 +68,17 @@ def backup_media_from_channel(msc, channel_oid, dir_path, as_tree=False):
     process_channel(msc, channel_parent['info'], dir_path, backuped, failed, as_tree)
 
     if backuped:
-        print('%sMedia backuped successfully (%s):%s' % (GREEN, len(backuped), RESET))
+        print('%sMedia backuped successfully (%s):%s' % (C.GREEN, len(backuped), C.RESET))
         for item in backuped:
-            print('  [%sOK%s] %s' % (GREEN, RESET, get_repr(item)))
+            print('  [%sOK%s] %s' % (C.GREEN, C.RESET, get_item_repr(item)))
     if failed:
-        print('%sMedia backups failed (%s):%s' % (RED, len(failed), RESET))
+        print('%sMedia backups failed (%s):%s' % (C.RED, len(failed), C.RESET))
         for item, error in failed:
-            print('  [%sKO%s] %s: %s' % (RED, RESET, get_repr(item), error))
-        print('%sSome media were not backuped.%s' % (YELLOW, RESET))
+            print('  [%sKO%s] %s: %s' % (C.RED, C.RESET, get_item_repr(item), error))
+        print('%sSome media were not backuped.%s' % (C.YELLOW, C.RESET))
         return 1
     if backuped:
-        print('%sAll media have been backuped successfully.%s' % (GREEN, RESET))
+        print('%sAll media have been backuped successfully.%s' % (C.GREEN, C.RESET))
     else:
         print('No media to backup.')
     return 0
@@ -116,6 +87,7 @@ def backup_media_from_channel(msc, channel_oid, dir_path, as_tree=False):
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
+    from ms_client.lib.utils import TTYColors as C, get_item_repr
 
     parser = argparse.ArgumentParser()
 

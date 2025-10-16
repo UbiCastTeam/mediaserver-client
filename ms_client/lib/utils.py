@@ -1,3 +1,24 @@
+import re
+import sys
+
+
+OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
+
+
+# Terminal colors
+if sys.stdout.isatty():
+    class TTYColors:
+        RED = '\033[31m'
+        GREEN = '\033[32m'
+        YELLOW = '\033[33m'
+        BLUE = '\033[34m'
+        PURPLE = '\033[35m'
+        TEAL = '\033[36m'
+        RESET = '\033[0m'
+else:
+    class TTYColors:
+        RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = RESET = ''
+
 
 def _size_repr(value: int, unit: str, short: bool = True) -> str:
     # https://en.wikipedia.org/wiki/Template:Quantities_of_bytes
@@ -13,24 +34,44 @@ def _size_repr(value: int, unit: str, short: bool = True) -> str:
     return f'{round(value, 1)} {labels[n]}{unit}'
 
 
-def bits_repr(value: int, short: bool = True) -> str:
+def get_bits_repr(value: int, short: bool = True) -> str:
     unit = 'b' if short else 'bits'
     return _size_repr(value, unit, short=short)
 
 
-def bytes_repr(value: int, short: bool = True) -> str:
+def get_bytes_repr(value: int, short: bool = True) -> str:
     unit = 'B' if short else 'bytes'
     return _size_repr(value, unit, short=short)
 
 
-def time_repr(seconds: int) -> str:
+def get_time_repr(seconds: int) -> str:
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return f'{h:d}:{m:02d}:{s:02d}'
 
 
-def item_repr(item: dict) -> str:
-    txt = item['oid']
+def get_item_repr(item: dict) -> str:
+    txt = OBJECT_TYPES.get(item['oid'][0], item['oid'][0])
+    txt += f' {item["oid"]}'
     if item.get('title'):
-        txt += ' ' + item['title']
+        title = item['title']
+        if len(title) > 57:
+            title = title[:57] + '...'
+        txt += f' "{title}"'
     return txt
+
+
+def get_item_file_name(item: dict) -> str:
+    # This function does not handle all file systems, only most common ones (NTFS, ext4, HFS)
+    # Characters limitation depending on file system:
+    # https://en.wikipedia.org/wiki/Filename#Comparison_of_filename_limitations
+    title = item.get('title')
+    if item.get('title'):
+        title = re.sub(r'["\'*/\\|:<>?]', ' ', item['title'])
+        title = re.sub(r' +', ' ', title)
+        title = title.strip(' -')
+    if not title:
+        title = 'channel' if item['oid'].startswith('c') else 'media'
+    elif len(title) > 54:
+        title = title[:54] + '...'
+    return title + ' - ' + item['oid']

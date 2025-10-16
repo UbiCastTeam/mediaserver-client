@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
-from .utils import bytes_repr
+from .utils import get_bytes_repr
 if TYPE_CHECKING:
     from ..client import MediaServerClient
 
@@ -121,7 +121,7 @@ def chunked_upload(
             chunk = fo.read(chunk_size)
 
     bandwidth = total_size / (time.time() - begin)
-    logger.info(f'Upload finished, average bandwidth was {bytes_repr(bandwidth)}/s.')
+    logger.info(f'Upload finished, average bandwidth was {get_bytes_repr(bandwidth)}/s.')
 
     # Mark file as completed
     data['no_md5'] = 'yes'  # The md5 check is deprecated since 2023-04-20 and has been removed in Nudgis v11.3.1
@@ -255,7 +255,7 @@ def hls_upload(
     bandwidth = total_size / (time.time() - begin)
     logger.info(
         f'Upload finished ({total_files_count} files in "{remote_dir}"), '
-        f'average bandwidth: {bytes_repr(bandwidth)}/s'
+        f'average bandwidth: {get_bytes_repr(bandwidth)}/s'
     )
 
     # Notify progress callback

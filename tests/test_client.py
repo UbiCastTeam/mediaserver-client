@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
+from ms_client.client import MediaServerClient
+
 
 CONFIG = {
     'SERVER_URL': 'https://msctest',
@@ -29,7 +31,6 @@ def mocked_requests_get(*args, **kwargs):
 
 @patch('requests.get', side_effect=mocked_requests_get)
 def test_client(mock_get):
-    from ms_client.client import MediaServerClient
     msc = MediaServerClient(local_conf=CONFIG)
     response = msc.api('/')
     assert isinstance(response, dict)
