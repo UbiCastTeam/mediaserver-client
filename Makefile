@@ -1,6 +1,6 @@
 DOCKER_IMAGE_NAME ?= ms-client:latest
 DOCKER_WORK_DIR ?= /opt/src
-DOCKER_RUN ?= docker run --rm -it --user "$(shell id -u):$(shell id -g)" -v ${CURDIR}:${DOCKER_WORK_DIR} --name ms-client
+DOCKER_RUN ?= docker run --rm -it --user "$(shell id -u):$(shell id -g)" -v ${CURDIR}:${DOCKER_WORK_DIR}
 
 build:
 	docker build -t ${DOCKER_IMAGE_NAME} ${BUILD_ARGS} .
