@@ -10,17 +10,11 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-import unidecode
-
-from .utils import bytes_repr, item_repr
+from .utils import get_bytes_repr, get_item_repr, get_item_file_name
 if TYPE_CHECKING:
     from ..client import MediaServerClient
 
 logger = logging.getLogger(__name__)
-
-
-def get_prefix(item: dict) -> str:
-    return unidecode.unidecode((item.get('title', '')[:57]).replace('/', '|').strip(' -') + ' - ') + item['oid']
 
 
 def download_media_metadata_zip(
@@ -42,7 +36,7 @@ def download_media_metadata_zip(
     if not media_item.get('oid'):
         raise ValueError('You should give an object id to get the zip file.')
 
-    logger.info('Downloading metadata for media %s.', item_repr(media_item))
+    logger.info('Downloading metadata for media %s.', get_item_repr(media_item))
 
     valid_annotations = ('all', 'editorial', 'none')
     if include_annotations not in valid_annotations:
@@ -63,7 +57,7 @@ def download_media_metadata_zip(
     dir_path = Path(dir_path)
     dir_path.mkdir(parents=True, exist_ok=True)
     if not file_prefix:
-        file_prefix = get_prefix(media_item)
+        file_prefix = get_item_file_name(media_item)
     path = dir_path / f'{file_prefix}.zip'
 
     if current_size is None and path.is_file():
@@ -104,7 +98,7 @@ def download_media_metadata_zip(
             fo.write(chunk)
             total_size += len(chunk)
     bandwidth = total_size / (time.time() - begin)
-    logger.info(f'Download finished, average bandwidth was {bytes_repr(bandwidth)}/s.')
+    logger.info(f'Download finished, average bandwidth was {get_bytes_repr(bandwidth)}/s.')
 
     # Check that the zip file is valid
     with zipfile.ZipFile(path, 'r') as zf:
@@ -136,7 +130,7 @@ def download_media_best_resource(
         logger.info('The media %s is not a video, skipping resource download.', media_item['oid'])
         return None
 
-    logger.info('Downloading resource for media %s.', item_repr(media_item))
+    logger.info('Downloading resource for media %s.', get_item_repr(media_item))
 
     resources = client.api('medias/resources-list/', params=dict(oid=media_item['oid']))['resources']
     if not resources:
@@ -157,7 +151,7 @@ def download_media_best_resource(
     dir_path = Path(dir_path)
     dir_path.mkdir(parents=True, exist_ok=True)
     if not file_prefix:
-        file_prefix = get_prefix(media_item)
+        file_prefix = get_item_file_name(media_item)
     path = dir_path / f'{file_prefix}-{best_quality["width"]}x{best_quality["height"]}.{best_quality["format"]}'
 
     if current_size is None and path.is_file():
@@ -218,7 +212,7 @@ def download_media_best_resource(
             fo.write(chunk)
             total_size += len(chunk)
     bandwidth = total_size / (time.time() - begin)
-    logger.info(f'Download finished, average bandwidth was {bytes_repr(bandwidth)}/s.')
+    logger.info(f'Download finished, average bandwidth was {get_bytes_repr(bandwidth)}/s.')
 
     return path
 
@@ -233,17 +227,17 @@ def backup_media(
     if not media_item.get('oid'):
         raise ValueError('You should give an object id to get the zip file.')
 
-    logger.info('Backuping media %s.', item_repr(media_item))
+    logger.info('Backuping media %s.', get_item_repr(media_item))
 
     channels = client.api('channels/path/', params=dict(oid=media_item['oid']))['path']
     media_chan_path = [channel['title'].replace('/', '|') for channel in channels]
     if replicate_tree:
-        media_backup_dir = Path(dir_path, *[get_prefix(channel) for channel in channels])
+        media_backup_dir = Path(dir_path, *[get_item_file_name(channel) for channel in channels])
     else:
         media_backup_dir = Path(dir_path)
     media_backup_dir.mkdir(parents=True, exist_ok=True)
 
-    file_prefix = get_prefix(media_item)
+    file_prefix = get_item_file_name(media_item)
     zip_path = media_backup_dir / f'{file_prefix}.zip'
     metadata_zip_size = 0
     best_resource_size = 0

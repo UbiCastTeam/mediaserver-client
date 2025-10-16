@@ -49,17 +49,6 @@ import zipfile
 import json
 from pathlib import Path
 
-if sys.stdout.isatty():
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    PURPLE = '\033[35m'
-    TEAL = '\033[36m'
-    RESET = '\033[0m'
-else:
-    RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = RESET = ''
-
 
 def extract_metadata_from_zip(zip_path):
     with zipfile.ZipFile(zip_path) as zf:
@@ -320,13 +309,13 @@ def main():
     errors = []
 
     for index, oid_src in enumerate(oids_src):
-        print(f'\n{BLUE}Processing {index + 1}/{oid_src_count}: {oid_src}{RESET}', flush=True)
+        print(f'\n{C.BLUE}Processing {index + 1}/{oid_src_count}: {oid_src}{C.RESET}', flush=True)
 
         # Verify OID presence in destination catalog, skip if already present
         external_ref = f'{external_ref_prefix}:{oid_src}'
         if oid_dst := dst_external_refs.get(external_ref):
             print(f'Media {external_ref} already uploaded as {oid_dst}, skipping source media {oid_src}')
-            print(f'{YELLOW}Skipped{RESET}')
+            print(f'{C.YELLOW}Skipped{C.RESET}')
             skipped += 1
             continue
 
@@ -335,7 +324,7 @@ def main():
         try:
             # Retrieve media
             step = 'download'
-            print(f'{PURPLE}:: {step}{RESET}')
+            print(f'{C.PURPLE}:: {step}{C.RESET}')
             zip_path = msc_src.backup_media(
                 {'oid': oid_src},
                 dir_path=media_temp_dir,
@@ -344,7 +333,7 @@ def main():
 
             # Prepare for upload
             step = 'prepare'
-            print(f'{PURPLE}:: {step}{RESET}')
+            print(f'{C.PURPLE}:: {step}{C.RESET}')
             metadata = extract_metadata_from_zip(zip_path)
             src_path = metadata['path']
             upload_args = {
@@ -386,7 +375,7 @@ def main():
 
             # Upload media
             step = 'upload'
-            print(f'{PURPLE}:: {step}{RESET}')
+            print(f'{C.PURPLE}:: {step}{C.RESET}')
             if args.apply:
                 try:
                     resp = msc_dst.add_media(**upload_args)
@@ -404,7 +393,7 @@ def main():
                 print(f'[Dry run] Would upload {zip_path} with {upload_args}')
         except Exception as e:
             print(e)
-            print(f'{RED}Failed{RESET}')
+            print(f'{C.RED}Failed{C.RESET}')
             # Keep a short part of the error for the final report
             error_msg = str(e).replace('\n', ' ')
             if len(error_msg) > 100:
@@ -412,7 +401,7 @@ def main():
             errors.append(f'{oid_src}: Failed to {step} media: {error_msg}')
             failed += 1
         else:
-            print(f'{GREEN}Success{RESET}')
+            print(f'{C.GREEN}Success{C.RESET}')
             done += 1
         finally:
             if not args.keep_temp and media_temp_dir.exists():
@@ -420,9 +409,9 @@ def main():
                 shutil.rmtree(media_temp_dir)
 
     print(
-        f'\nMedia: {GREEN}uploaded {done}{RESET}, '
-        f'{YELLOW}skipped {skipped}{RESET}, '
-        f'{RED}failed {failed}{RESET}.'
+        f'\nMedia: {C.GREEN}uploaded {done}{C.RESET}, '
+        f'{C.YELLOW}skipped {skipped}{C.RESET}, '
+        f'{C.RED}failed {failed}{C.RESET}.'
     )
     print('\n'.join(errors))
     return 1 if failed else 0
@@ -431,5 +420,6 @@ def main():
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     from ms_client.client import MediaServerClient
+    from ms_client.lib.utils import TTYColors as C
 
     sys.exit(main())
