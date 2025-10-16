@@ -17,31 +17,6 @@ import re
 import sys
 
 
-# Terminal colors
-if os.environ.get('LS_COLORS') is not None:
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    PURPLE = '\033[95m'
-    TEAL = '\033[96m'
-    DEFAULT = '\033[0m'
-else:
-    RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = DEFAULT = ''
-
-
-OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
-
-
-def get_repr(item):
-    return '%s %s "%s%s"' % (
-        OBJECT_TYPES[item['oid'][0]],
-        item['oid'],
-        item['title'][:40],
-        ('...' if len(item['title']) > 40 else '')
-    )
-
-
 def get_item_folder_name(item):
     if item.get('folder_name'):
         return item['folder_name']
@@ -82,7 +57,7 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
         for item in response['items']:
             index += 1
             if verbose:
-                print('# %sMedia %s:%s "%s" %s' % (PURPLE, index, DEFAULT, item['add_date'], get_repr(item)))
+                print('# %sMedia %s:%s "%s" %s' % (C.PURPLE, index, C.RESET, item['add_date'], format_item(item)))
             add_date = datetime.datetime.strptime(item['add_date'].split(' ')[0], '%Y-%m-%d').date()
             if add_date < from_date:
                 more = False
@@ -102,7 +77,7 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
                         print_path_if_exists(
                             '/home/%s/msinstance/media/protected/%s/' % (user, folder_name), fout)
                     elif verbose:
-                        print('# No folder name found for channel %s.' % get_repr(info))
+                        print('# No folder name found for channel %s.' % format_item(info))
             # get media files
             folder_name = get_item_folder_name(item)
             if folder_name:
@@ -111,7 +86,7 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
                 print_path_if_exists(
                     '/home/%s/msinstance/media/protected/%s/' % (user, folder_name), fout)
             elif verbose:
-                print('# No folder name found for media %s.' % get_repr(item))
+                print('# No folder name found for media %s.' % format_item(item))
             # get media resources
             if item['oid'][0] == 'v':
                 resources = msc.api('medias/resources-list/', params=dict(oid=item['oid']))['resources']
@@ -134,6 +109,7 @@ def get_files_to_backup(msc, user, from_date, to_date, fout=None, verbose=False)
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
+    from ms_client.lib.utils import TTYColors as C, format_item
 
     parser = argparse.ArgumentParser()
 

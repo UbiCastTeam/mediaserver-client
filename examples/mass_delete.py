@@ -31,19 +31,7 @@ try:
 except ModuleNotFoundError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
-
-GB = 1000 * 1000 * 1000
-
-
-def format_size(size_bytes: int) -> str:
-    """
-    Return human-readable size with automatic suffix.
-    """
-    for unit in ('', 'K', 'M', 'G', 'T', 'P', 'E', 'Z'):
-        if abs(size_bytes) < 1000:
-            return f'{size_bytes:.1f}{unit}B'
-        size_bytes /= 1000
-    return f'{size_bytes:.1f}YB'
+from ms_client.lib.utils import format_bytes
 
 
 def _delete_medias(
@@ -81,13 +69,13 @@ def _delete_medias(
             else:
                 print(f'{mode}Media {object_id} could not be deleted: {status.get("message")}')
 
-        print(f'{mode}Deleted {deleted_count} VODs, freed {format_size(deleted_size)}.')
+        print(f'{mode}Deleted {deleted_count} VODs, freed {format_bytes(deleted_size)}.')
     else:
         oids = list(to_delete.keys())
         total_size = sum(to_delete.values())
         print(f'{mode}Would have deleted {len(oids)} VODs: {oids}')
         print(
-            f'{mode}Deleting these VODs would have freed {format_size(total_size)}.'
+            f'{mode}Deleting these VODs would have freed {format_bytes(total_size)}.'
         )
 
 

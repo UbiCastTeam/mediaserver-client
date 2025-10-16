@@ -27,6 +27,7 @@ try:
 except ModuleNotFoundError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
+from ms_client.lib.utils import format_bytes, format_timedelta
 
 
 logger = logging.getLogger(__name__)
@@ -82,30 +83,6 @@ DUMMY_MEDIAS = [
 
 class MisconfiguredError(Exception):
     pass
-
-
-def format_size(size_bytes: int) -> str:
-    """
-    Return human-readable size with automatic suffix.
-    """
-    for unit in ('', 'K', 'M', 'G', 'T', 'P', 'E', 'Z'):
-        if abs(size_bytes) < 1000:
-            return f'{size_bytes:.1f}{unit}B'
-        size_bytes /= 1000
-    return f'{size_bytes:.1f}YB'
-
-
-def format_timedelta(delta: timedelta):
-    if delta.days < 30:
-        return f'{delta.days} days'
-
-    years, days = divmod(delta.days, 365)
-    months, days = divmod(days, 30)
-    if years and months:
-        return f'{years} years, {months} months'
-    elif years:
-        return f'{years} years'
-    return f'{months} months'
 
 
 def _get_medias(
@@ -175,7 +152,7 @@ def _get_medias(
     storage_used = sum(media['storage_used'] for media in selected_medias)
     logger.info(
         f'Found {len(selected_medias)} medias matching the given filters '
-        f'(size: {format_size(storage_used)}).'
+        f'(size: {format_bytes(storage_used)}).'
     )
     return selected_medias
 
@@ -209,7 +186,7 @@ def _prepare_mail(
     ms_edit_url = msc.conf['SERVER_URL'] + '/edit/iframe/'
     context = {
         'media_count': len(medias),
-        'media_size_pp': format_size(sum(media['storage_used'] for media in medias)),
+        'media_size_pp': format_bytes(sum(media['storage_used'] for media in medias)),
         'delete_date': delete_date.strftime('%B %d, %Y'),
         'skip_categories': ' | '.join(f'"{cat}"' for cat in skip_categories),
         'platform_hostname': urlparse(msc.conf['SERVER_URL']).netloc,
@@ -466,7 +443,7 @@ def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = Fal
                     f'The media has not been deleted: {err}.'
                 )
         logger.info(
-            f'{deleted_count} medias ({format_size(deleted_size)}) have been successfully deleted.'
+            f'{deleted_count} medias ({format_bytes(deleted_size)}) have been successfully deleted.'
         )
     else:
         for oid, media in medias.items():
@@ -474,7 +451,7 @@ def _delete_medias(msc: MediaServerClient, medias: list[dict], apply: bool = Fal
             deleted_count += 1
             deleted_size += media['storage_used']
         logger.info(
-            f'[Dry run] {deleted_count} medias ({format_size(deleted_size)}) '
+            f'[Dry run] {deleted_count} medias ({format_bytes(deleted_size)}) '
             f'would have been have been deleted.'
         )
 

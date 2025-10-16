@@ -19,25 +19,9 @@ import traceback
 import zipfile
 
 
-# Terminal colors
-if os.environ.get('LS_COLORS') is not None:
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    PURPLE = '\033[95m'
-    TEAL = '\033[96m'
-    DEFAULT = '\033[0m'
-else:
-    RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = DEFAULT = ''
-
-
-OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
-
-
 def restore_path(msc, path, top_channel_path):
     if not os.path.exists(path):
-        print('%sERROR:%s Requested directory does not exist.' % (RED, DEFAULT))
+        print('%sERROR:%s Requested directory does not exist.' % (C.RED, C.RESET))
         return 1
 
     print('\nGetting list of media to restore...')
@@ -56,7 +40,7 @@ def restore_path(msc, path, top_channel_path):
         else:
             to_restore.append(path)
     else:
-        print('%sERROR:%s Requested path is neither a directory neither a file.' % (RED, DEFAULT))
+        print('%sERROR:%s Requested path is neither a directory neither a file.' % (C.RED, C.RESET))
         return 1
     if not to_restore:
         print('No valid file to restore.')
@@ -72,7 +56,7 @@ def restore_path(msc, path, top_channel_path):
         try:
             is_new, url = _restore_file(msc, file_path, top_channel_path)
         except Exception as e:
-            print('%s%s: %s%s' % (RED, e.__class__.__name__, e, DEFAULT))
+            print('%s%s: %s%s' % (C.RED, e.__class__.__name__, e, C.RESET))
             traceback.print_exc()
             failed.append((file_path, str(e)))
         else:
@@ -84,20 +68,20 @@ def restore_path(msc, path, top_channel_path):
 
     print('Report:')
     if restored:
-        print('%sMedia restored successfully (%s):%s' % (GREEN, len(restored), DEFAULT))
+        print('%sMedia restored successfully (%s):%s' % (C.GREEN, len(restored), C.RESET))
         for path, url in restored:
-            print('  [%sOK%s] %s: %s' % (GREEN, DEFAULT, path, url))
+            print('  [%sOK%s] %s: %s' % (C.GREEN, C.RESET, path, url))
     if existing:
-        print('%sMedia already existing (%s):%s' % (GREEN, len(existing), DEFAULT))
+        print('%sMedia already existing (%s):%s' % (C.GREEN, len(existing), C.RESET))
         for path, url in existing:
-            print('  [%sOK%s] %s: %s' % (GREEN, DEFAULT, path, url))
+            print('  [%sOK%s] %s: %s' % (C.GREEN, C.RESET, path, url))
     if failed:
-        print('%sMedia restoration failed (%s):%s' % (RED, len(failed), DEFAULT))
+        print('%sMedia restoration failed (%s):%s' % (C.RED, len(failed), C.RESET))
         for path, error in failed:
-            print('  [%sKO%s] %s: %s' % (RED, DEFAULT, path, error))
-        print('%sSome media were not restored.%s' % (RED, DEFAULT))
+            print('  [%sKO%s] %s: %s' % (C.RED, C.RESET, path, error))
+        print('%sSome media were not restored.%s' % (C.RED, C.RESET))
         return 1
-    print('%sAll media were restored.%s' % (GREEN, DEFAULT))
+    print('%sAll media were restored.%s' % (C.GREEN, C.RESET))
     return 0
 
 
@@ -182,6 +166,7 @@ def _restore_file(msc, path, top_channel_path):
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
+    from ms_client.lib.utils import TTYColors as C
 
     parser = argparse.ArgumentParser()
 

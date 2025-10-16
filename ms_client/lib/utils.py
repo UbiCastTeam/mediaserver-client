@@ -1,3 +1,4 @@
+from datetime import timedelta
 import re
 import sys
 
@@ -34,23 +35,36 @@ def _size_repr(value: int, unit: str, short: bool = True) -> str:
     return f'{round(value, 1)} {labels[n]}{unit}'
 
 
-def get_bits_repr(value: int, short: bool = True) -> str:
+def format_bits(value: int, short: bool = True) -> str:
     unit = 'b' if short else 'bits'
     return _size_repr(value, unit, short=short)
 
 
-def get_bytes_repr(value: int, short: bool = True) -> str:
+def format_bytes(value: int, short: bool = True) -> str:
     unit = 'B' if short else 'bytes'
     return _size_repr(value, unit, short=short)
 
 
-def get_time_repr(seconds: int) -> str:
+def format_time(seconds: int) -> str:
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return f'{h:d}:{m:02d}:{s:02d}'
 
 
-def get_item_repr(item: dict) -> str:
+def format_timedelta(delta: timedelta) -> str:
+    if delta.days < 30:
+        return f'{delta.days} days'
+
+    years, days = divmod(delta.days, 365)
+    months, days = divmod(days, 30)
+    if years and months:
+        return f'{years} years, {months} months'
+    elif years:
+        return f'{years} years'
+    return f'{months} months'
+
+
+def format_item(item: dict) -> str:
     txt = OBJECT_TYPES.get(item['oid'][0], item['oid'][0])
     txt += f' {item["oid"]}'
     if item.get('title'):
@@ -61,7 +75,7 @@ def get_item_repr(item: dict) -> str:
     return txt
 
 
-def get_item_file_name(item: dict) -> str:
+def format_item_file(item: dict) -> str:
     # This function does not handle all file systems, only most common ones (NTFS, ext4, HFS)
     # Characters limitation depending on file system:
     # https://en.wikipedia.org/wiki/Filename#Comparison_of_filename_limitations

@@ -8,8 +8,6 @@ import os
 import sys
 import argparse
 
-GB = 1000 * 1000 * 1000
-
 
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
