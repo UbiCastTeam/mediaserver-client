@@ -9,7 +9,7 @@ rebuild:
 	BUILD_ARGS="--no-cache" make docker_build
 
 shell:
-	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} /bin/sh
+	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} /bin/bash
 
 lint:
 	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} make lint_local
