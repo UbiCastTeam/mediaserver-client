@@ -44,6 +44,7 @@ def get_channel_size(msc, oid, info=None):
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
+    from ms_client.lib.utils import format_bytes
 
     local_conf = sys.argv[1] if len(sys.argv) > 1 else None
     msc = MediaServerClient(local_conf)
@@ -54,7 +55,7 @@ if __name__ == '__main__':
     info = get_channel_size(msc, channel_oid)
     print('')
     print('Channel info:')
-    print('  - Total resources size: %.2f GB (attachments and slides not included)' % (info['size'] / (1000 ** 3)))
+    print('  - Total resources size: %s (attachments and slides not included)' % format_bytes(info['size']))
     print('  - Number of videos: %s' % info['videos'])
     print('  - Number of lives: %s' % info['lives'])
     print('  - Number of photos groups: %s' % info['pgroups'])

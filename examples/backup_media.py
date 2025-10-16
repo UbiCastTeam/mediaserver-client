@@ -34,11 +34,11 @@ def make_backup(msc, dir_path, limit_date, as_tree=False, use_add_date=False, en
         for item in response['items']:
             index += 1
             media_link = msc.conf['SERVER_URL'] + '/permalink/' + item['oid'] + '/'
-            print(f'// {C.PURPLE}Media {index}:{C.RESET} "{media_link}" {get_item_repr(item)}')
+            print(f'// {C.PURPLE}Media {index}:{C.RESET} "{media_link}" {format_item(item)}')
             media_date = datetime.datetime.strptime(item[date_field][0:10], '%Y-%m-%d').date()
             if media_date > limit_date:
                 print('No backup for media %s because creation date %s is newer than backup date %s' % (
-                    get_item_repr(item), item['creation'], limit_date))
+                    format_item(item), item['creation'], limit_date))
             else:
                 try:
                     msc.backup_media(item, dir_path, replicate_tree=as_tree)
@@ -47,7 +47,7 @@ def make_backup(msc, dir_path, limit_date, as_tree=False, use_add_date=False, en
                     failed.append((item, str(err)))
                     if enable_delete:
                         print('Media %s will not be deleted because it has not been successfully downloaded.' % (
-                            get_item_repr(item)))
+                            format_item(item)))
                 else:
                     print(f'{C.GREEN}Backuped{C.RESET}')
                     backuped.append(item)
@@ -59,9 +59,9 @@ def make_backup(msc, dir_path, limit_date, as_tree=False, use_add_date=False, en
                                 data=dict(oid=item['oid'], delete_metadata='yes', delete_resources='yes', force='yes')
                             )
                         except Exception as e:
-                            print('Failed to delete media %s: %s' % (get_item_repr(item), e))
+                            print('Failed to delete media %s: %s' % (format_item(item), e))
                         else:
-                            print('Media %s has been deleted successfully from MediaServer.' % get_item_repr(item))
+                            print('Media %s has been deleted successfully from MediaServer.' % format_item(item))
         start = response['max_date']
         more = response['more']
     print('Done.\n')
@@ -69,11 +69,11 @@ def make_backup(msc, dir_path, limit_date, as_tree=False, use_add_date=False, en
     if backuped:
         print('%sMedia backuped successfully (%s):%s' % (C.GREEN, len(backuped), C.RESET))
         for item in backuped:
-            print('  [%sOK%s] %s' % (C.GREEN, C.RESET, get_item_repr(item)))
+            print('  [%sOK%s] %s' % (C.GREEN, C.RESET, format_item(item)))
     if failed:
         print('%sMedia backups failed (%s):%s' % (C.RED, len(failed), C.RESET))
         for item, error in failed:
-            print('  [%sKO%s] %s: %s' % (C.RED, C.RESET, get_item_repr(item), error))
+            print('  [%sKO%s] %s: %s' % (C.RED, C.RESET, format_item(item), error))
         print('%sSome media were not backuped.%s' % (C.YELLOW, C.RESET))
         return 1
     if backuped:
@@ -86,7 +86,7 @@ def make_backup(msc, dir_path, limit_date, as_tree=False, use_add_date=False, en
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
-    from ms_client.lib.utils import TTYColors as C, get_item_repr
+    from ms_client.lib.utils import TTYColors as C, format_item
 
     parser = argparse.ArgumentParser()
 

@@ -2,9 +2,16 @@
 import argparse
 import csv
 import logging
+import os
 import sys
 
 from datetime import datetime, timedelta
+
+try:
+    from ms_client.lib.utils import format_bytes, format_time
+except ModuleNotFoundError:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from ms_client.lib.utils import format_bytes, format_time
 
 csv.field_size_limit(sys.maxsize)  # support huge fields
 
@@ -32,27 +39,9 @@ def get_percent_string(val, total, do_format=None):
     if do_format == "size":
         return f"{format_bytes(val)} / {format_bytes(total)} ({get_percent(val, total):.1f}%)"
     elif do_format == "time":
-        return f"{format_seconds(val)} / {format_seconds(total)} ({get_percent(val, total):.1f}%)"
+        return f"{format_time(val)} / {format_time(total)} ({get_percent(val, total):.1f}%)"
     else:
         return f"{val} / {total} ({get_percent(val, total):.1f}%)"
-
-
-def format_seconds(seconds):
-    m, s = divmod(seconds, 60)
-    h, m = divmod(m, 60)
-    timecode = "%d:%02d:%02d" % (h, m, s)
-    return timecode
-
-
-def format_bytes(size):
-    # 2**10 = 1024
-    power = 2**10
-    n = 0
-    power_labels = {0: "", 1: "kilo", 2: "mega", 3: "giga", 4: "tera"}
-    while size > power:
-        size /= power
-        n += 1
-    return f"{round(size, 1)} {power_labels[n]}bytes"
 
 
 def print_dict_stats(

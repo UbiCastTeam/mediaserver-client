@@ -6,26 +6,10 @@ import os
 import sys
 
 
-def format_seconds(seconds):
-    m, s = divmod(seconds, 60)
-    h, m = divmod(m, 60)
-    timecode = '%d:%02d:%02d' % (h, m, s)
-    return timecode
-
-
-def format_bytes(size):
-    power = 1000
-    n = 0
-    power_labels = {0: '', 1: 'kilo', 2: 'mega', 3: 'giga', 4: 'tera'}
-    while size > power:
-        size /= power
-        n += 1
-    return f'{round(size, 1)} {power_labels[n]}bytes'
-
-
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
+    from ms_client.lib.utils import format_bytes, format_time
 
     local_conf = sys.argv[1] if len(sys.argv) > 1 else None
     msc = MediaServerClient(local_conf)
@@ -61,7 +45,7 @@ if __name__ == '__main__':
     for mode, duration in all_resources_duration.items():
         mode_size = all_resources_size[mode]
         size_per_hour = int(mode_size / (duration / 3600))
-        print(f'{mode}: {format_seconds(duration)}, average size: {format_bytes(size_per_hour)} per hour')
+        print(f'{mode}: {format_time(duration)}, average size: {format_bytes(size_per_hour)} per hour')
 
     print()
     print('Source resolutions by count:')
