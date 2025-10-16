@@ -48,7 +48,7 @@ if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__.strip())
 
     parser.add_argument(
         '--conf', help='Path to the configuration file.', required=True, type=str

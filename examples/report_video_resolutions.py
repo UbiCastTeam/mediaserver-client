@@ -2,6 +2,7 @@
 '''
 Script which will produce stats about the video files on the platform
 '''
+import argparse
 import os
 import sys
 
@@ -11,8 +12,17 @@ if __name__ == '__main__':
     from ms_client.client import MediaServerClient
     from ms_client.lib.utils import format_bytes, format_time
 
-    local_conf = sys.argv[1] if len(sys.argv) > 1 else None
-    msc = MediaServerClient(local_conf)
+    parser = argparse.ArgumentParser(description=__doc__.strip())
+    parser.add_argument(
+        'conf',
+        default=None,
+        help='The configuration to use.',
+        nargs='?',
+        type=str,
+    )
+    args = parser.parse_args()
+
+    msc = MediaServerClient(args.conf)
     # ping
     print('Dumping catalog')
     videos = msc.get_catalog(fmt='json')['videos']

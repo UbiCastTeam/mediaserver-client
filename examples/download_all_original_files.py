@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 '''
 Script to download all best quality video files from a MediaServer.
-
-To use this script clone MediaServer client, configure it and run this file.
-git clone https://github.com/UbiCastTeam/mediaserver-client
-cd mediaserver-client
-python3 examples/download_all_original_files.py
 '''
+import argparse
 import os
 import re
 import subprocess
@@ -61,8 +56,17 @@ if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ms_client.client import MediaServerClient
 
-    local_conf = sys.argv[1] if len(sys.argv) > 1 else None
-    msc = MediaServerClient(local_conf)
+    parser = argparse.ArgumentParser(description=__doc__.strip())
+    parser.add_argument(
+        'conf',
+        default=None,
+        help='The configuration to use.',
+        nargs='?',
+        type=str,
+    )
+    args = parser.parse_args()
+
+    msc = MediaServerClient(args.conf)
     msc.check_server()
 
     dir_path = sys.argv[2] if len(sys.argv) > 2 else ''
