@@ -24,7 +24,6 @@ def chunked_upload(
     remote_path: str | None = None,
     progress_callback: Callable[[float], None] | None = None,
     timeout: int | None = 300,
-    max_retry: int | None = 10
 ) -> str:
     """
     Function to send a file using the chunked upload.
@@ -34,7 +33,6 @@ def chunked_upload(
 
     logger.info('Uploading file "%s".', file_path.name)
 
-    max_retry = client.get_max_retry(max_retry)
     url_prefix = 'medias/resource/' if client.get_server_version() < (8, 2) else ''
     file_path = Path(file_path)
 
@@ -58,56 +56,27 @@ def chunked_upload(
             logger.debug(f'Uploading chunk {chunk_index}/{chunks_count}.')
             headers = {'Content-Range': f'bytes {start_offset}-{end_offset}/{total_size}'}
             files = {'file': (file_path.name, chunk)}
-            tried = 0
-            while True:
-                tried += 1
+            try:
+                response = client.api(
+                    url,
+                    method='post',
+                    headers=headers,
+                    data=data,
+                    files=files,
+                    timeout=timeout
+                )
+            except client.RequestError as err:
+                if err.status_code != 400:
+                    raise
                 try:
-                    # Use client.request to handle retry for offset errors
-                    response = client.request(
-                        url,
-                        method='post',
-                        headers=headers,
-                        data=data,
-                        files=files,
-                        timeout=timeout
-                    )
-                    break
-                except client.RequestError as err:
-                    if err.status_code == 400:
-                        try:
-                            offset = int(err.response.get('offset'))
-                        except (ValueError, TypeError):
-                            offset = -1
-                        if tried > 1 and offset == end_offset + 1 and 'upload_id' in data:
-                            # The chunk sent was already received and due to an other error, the request was retried
-                            logger.info(f'Offset issue detected during upload, ignoring error: {err}')
-                            break
-                        # No need to retry for other 400 errors, the result will be the same
-                        logger.error(
-                            f'Chunk upload failed, tried {tried} times '
-                            f'(no retry for the status code {err.status_code} in chunk upload).'
-                        )
-                        raise err
-                    elif err.status_code in client.conf['RETRY_EXCEPT']:
-                        logger.error(
-                            f'Chunk upload failed, tried {tried} times '
-                            f'(no retry for the status code {err.status_code}).'
-                        )
-                        raise err
-                    elif tried > max_retry:
-                        logger.error(
-                            f'Chunk upload failed, tried {tried} times '
-                            f'(reached max retry count).'
-                        )
-                        raise err
-                    else:
-                        # Wait longer after every attempt
-                        delay = 3 * tried * tried
-                        logger.error(
-                            f'Chunk upload failed, tried {tried} times '
-                            f'(max {max_retry}), retrying in {delay}s.'
-                        )
-                        time.sleep(delay)
+                    offset = int(err.response.get('offset'))
+                except (ValueError, TypeError):
+                    offset = -1
+                if offset == end_offset + 1 and 'upload_id' in data:
+                    # The chunk was already received and due to an other error, the request was retried
+                    logger.info(f'Offset issue detected during upload, ignoring error: {err}')
+                else:
+                    raise
 
             # Notify progress callback
             if progress_callback:
@@ -133,7 +102,6 @@ def chunked_upload(
         method='post',
         data=data,
         timeout=timeout,
-        max_retry=max_retry
     )
 
     # Notify progress callback
@@ -148,7 +116,6 @@ def hls_upload(
     remote_dir: str = '',
     progress_callback: Callable[[float], None] | None = None,
     timeout: int | None = 600,
-    max_retry: int | None = 10
 ) -> str:
     """
     Method to upload an HLS video (m3u8 + ts fragments).
@@ -216,7 +183,6 @@ def hls_upload(
                 data=data,
                 files=files,
                 timeout=timeout,
-                max_retry=max_retry
             )
 
             # Notify progress callback
@@ -250,7 +216,6 @@ def hls_upload(
         data=data,
         files=files,
         timeout=timeout,
-        max_retry=max_retry
     )
     bandwidth = total_size / (time.time() - begin)
     logger.info(

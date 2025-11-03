@@ -20,7 +20,6 @@ def add_media(
     file_path: Path | str | None = None,
     progress_callback: Callable[[float], None] | None = None,
     timeout: int | None = 3600,
-    max_retry: int | None = None,
     **metadata
 ) -> dict:
     if not title and not file_path:
@@ -33,18 +32,15 @@ def add_media(
     if title:
         metadata['title'] = title
     if file_path:
-        upload_retry = max_retry if max_retry is not None else 10
         metadata['code'] = client.chunked_upload(
             file_path,
             progress_callback=progress_callback,
-            max_retry=upload_retry
         )
     response = client.api(
         'medias/add/',
         method='post',
         data=metadata,
         timeout=timeout,
-        max_retry=max_retry
     )
     return response
 
@@ -52,7 +48,6 @@ def add_media(
 def remove_all_content(
     client: MediaServerClient,
     timeout: int | None = None,
-    max_retry: int | None = None,
 ) -> None:
     logger.info('Remove all content')
     channels = client.api('channels/tree/')['channels']
@@ -64,7 +59,6 @@ def remove_all_content(
                 method='post',
                 data={'oid': c_oid, 'delete_content': 'yes'},
                 timeout=timeout,
-                max_retry=max_retry
             )
             logger.info('Emptied channel %s', c_oid)
         channels = client.api('channels/tree/')['channels']

@@ -10,6 +10,8 @@ import time
 from typing import Any, Type
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 from .lib import configuration as configuration_lib
 from .lib import content as content_lib
@@ -81,12 +83,6 @@ class MediaServerClient():
             return self.conf['SERVER_URL'] + '/api/v2/' + (uri.rstrip('/') + '/').lstrip('/')
         return uri
 
-    def get_max_retry(self, max_retry: int | None = None) -> int:
-        value = max_retry if max_retry is not None else (self.conf.get('MAX_RETRY') or 0)
-        if value < 0:
-            raise ValueError('The "max_retry" argument must be greater than or equal 0.')
-        return value
-
     def check_server(self) -> dict:
         return self.api('/')
 
@@ -128,6 +124,17 @@ class MediaServerClient():
         if self.conf['USE_SESSION']:
             if self.session is None:
                 self.session = requests.Session()
+                if self.conf['MAX_RETRY'] > 0:
+                    # Documentation on retry configuration:
+                    # https://requests.readthedocs.io/en/latest/user/advanced/#example-automatic-retries
+                    # https://urllib3.readthedocs.io/en/stable/reference/urllib3.util.html#urllib3.util.Retry
+                    retries = Retry(
+                        total=self.conf['MAX_RETRY'],
+                        status_forcelist=self.conf['RETRY_STATUS_CODES'],
+                        backoff_factor=self.conf['RETRY_DELAY_FACTOR'],
+                    )
+                    base_url = self.get_full_url('/')
+                    self.session.mount(f'{base_url.split("://", 1)[0]}://', HTTPAdapter(max_retries=retries))
             req_function = getattr(self.session, method)
         else:
             req_function = getattr(requests, method)
@@ -233,66 +240,7 @@ class MediaServerClient():
     ) -> dict | str | requests.Response:
         begin = time.time()
         kwargs['url'] = self.get_full_url(uri)
-        max_retry = self.get_max_retry(kwargs.pop('max_retry', None))
-        if not max_retry:
-            result = self.request(*args, **kwargs)
-        else:
-            tried = 0
-            while True:
-                tried += 1
-                try:
-                    result = self.request(*args, **kwargs)
-                    break
-                except MediaServerRequestError as err:
-                    # Retry after errors like timeout or RemoteDisconnected errors
-                    if err.status_code in self.conf['RETRY_EXCEPT']:
-                        logger.error(
-                            f'Request on "{uri}" failed, tried {tried} times '
-                            f'(no retry for the status code {err.status_code}).'
-                        )
-                        raise err
-                    elif tried > max_retry:
-                        logger.error(
-                            f'Request on "{uri}" failed, tried {tried} times '
-                            f'(reached max retry count).'
-                        )
-                        raise err
-                    else:
-                        # Wait longer after every attempt
-                        delay = 3 * tried * tried
-                        logger.error(
-                            f'Request on "{uri}" failed, tried {tried} times '
-                            f'(max {max_retry}), retrying in {delay}s.'
-                        )
-                        time.sleep(delay)
-                        # Seek to 0 in file objects
-                        # (file objects using a value different from 0 as initial position is not supported)
-                        if kwargs.get('files'):
-                            # Python-requests supports the following files arguments:
-                            # files = {'file': open('report.xls', 'rb')}
-                            # files = {'file': tuple}
-                            # 2-tuples (filename, fileobj)
-                            # 3-tuples (filename, fileobj, contentype)
-                            # 4-tuples (filename, fileobj, contentype, custom_headers)
-                            files = kwargs['files']
-
-                            def is_fd(obj):
-                                return hasattr(obj, 'seek')
-
-                            for key, val in files.items():
-                                fd = None
-
-                                if is_fd(val):
-                                    fd = val
-                                else:
-                                    for item in val:
-                                        if is_fd(item):
-                                            fd = item
-                                            break
-
-                                if fd:
-                                    logger.debug('Seeking file descriptor to 0')
-                                    fd.seek(0)
+        result = self.request(*args, **kwargs)
         logger.debug(f'API call duration: {time.time() - begin:.2f} s - {uri}.')
         return result
 
