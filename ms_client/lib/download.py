@@ -26,7 +26,6 @@ def download_media_metadata_zip(
     include_annotations: Literal['all', 'editorial', 'none'] = 'all',
     include_resources_links: Literal['yes', 'no'] = 'yes',
     timeout: int | None = 3600,
-    max_retry: int | None = None
 ) -> Path | None:
     """
     Download the metadata ZIP file of a media.
@@ -69,7 +68,6 @@ def download_media_metadata_zip(
             method='head',
             params=params,
             timeout=timeout,
-            max_retry=max_retry
         )
         try:
             size = int(req.headers.get('Content-Length'))
@@ -89,7 +87,6 @@ def download_media_metadata_zip(
         method='get',
         params=params,
         timeout=timeout,
-        max_retry=max_retry,
         stream=True
     )
     total_size = 0
@@ -116,7 +113,6 @@ def download_media_best_resource(
     current_size: int | None = None,
     should_be_playable: bool = False,
     timeout: int | None = 3600,
-    max_retry: int | None = None
 ) -> Path | None:
     """
     Download the best audio/video resource file of a media.
@@ -183,7 +179,6 @@ def download_media_best_resource(
             method='head',
             authenticate=False,
             timeout=timeout,
-            max_retry=max_retry
         )
         try:
             size = int(req.headers.get('Content-Length'))
@@ -203,7 +198,6 @@ def download_media_best_resource(
         method='get',
         authenticate=False,
         timeout=timeout,
-        max_retry=max_retry,
         stream=True
     )
     total_size = 0

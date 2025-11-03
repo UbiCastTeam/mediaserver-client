@@ -19,7 +19,6 @@ def import_users_csv(
     client: MediaServerClient,
     csv_path: Path | str,
     timeout: int | None = None,
-    max_retry: int | None = None
 ) -> None:
     group_name = f'Users imported from csv on {time.ctime()}'
     group_id = client.api(
@@ -50,7 +49,6 @@ def import_users_csv(
                     method='post',
                     data=user,
                     timeout=timeout,
-                    max_retry=max_retry
                 )
             except Exception as err:
                 logger.error(f'Error: {err}')
@@ -63,7 +61,6 @@ def import_users_csv(
                     method='post',
                     data={'id': group_id, 'user_email': email},
                     timeout=timeout,
-                    max_retry=max_retry
                 )
             except Exception as err:
                 logger.error(f'Error: {err}')
