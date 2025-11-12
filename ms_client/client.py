@@ -44,8 +44,11 @@ class MediaServerClient():
         # `local_conf` can be either a dict, a path (`str` object) or a unix user (`unix:msuser` for example)
         # Setup logging
         if setup_logging:
-            log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'
-            logging.basicConfig(level=logging.INFO, format=log_format)
+            logging.basicConfig(
+                format='%(asctime)s.%(msecs)03d pid:%(process)d %(name)s %(levelname)s %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S',
+                level=logging.INFO,
+            )
         # Read conf file
         self.load_conf(local_conf)
         # Configure logging

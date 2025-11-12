@@ -166,8 +166,11 @@ def main():
              'Other arguments will be ignored in this mode except "conf", "chunk" and "debug".')
     args = parser.parse_args()
 
-    log_format = '%(asctime)s %(name)s %(levelname)s %(message)s'
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format=log_format)
+    logging.basicConfig(
+        format='%(asctime)s.%(msecs)03d pid:%(process)d %(name)s %(levelname)s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=logging.DEBUG if args.debug else logging.INFO,
+    )
 
     if not args.bench:
         result = run_test(args)

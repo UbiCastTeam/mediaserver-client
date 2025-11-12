@@ -23,10 +23,10 @@ def setup_logging(verbose=False):
     logging.addLevelName(
         logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING)
     )
-    level = getattr(logging, "DEBUG" if verbose else "INFO")
     logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)-8s %(message)s",
+        format='%(asctime)s.%(msecs)03d pid:%(process)d %(name)s %(levelname)s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=getattr(logging, "DEBUG" if verbose else "INFO"),
     )
 
 

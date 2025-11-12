@@ -44,7 +44,7 @@ include-package-data = false
 [tool.pytest.ini_options]
 addopts = "--verbose --tb=native --color=yes"
 log_date_format = "%H:%M:%S"
-log_format = "%(asctime)s.%(msecs)03d %(name)s %(levelname)s %(message)s"
+log_format = "%(asctime)s.%(msecs)03d pid:%(process)d %(name)s %(levelname)s %(message)s"
 log_level = "DEBUG"
 testpaths = "tests/"
 
