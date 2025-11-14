@@ -19,20 +19,16 @@ import sys
 def transcode_all_videos(msc, purge):
     non_transcodable = failed = succeeded = 0
 
-    videos = msc.get_catalog(fmt='flat').get(
-        'videos', list()
-    )
+    videos = msc.get_catalog(fmt='flat').get('videos', [])
     videos_count = len(videos)
     for index, item in enumerate(videos):
         print(f'// Media {index + 1}/{videos_count}: {item["oid"]}')
         try:
-            transcoding_params = {
-                "priority": "low",
-            }
+            transcoding_params = {'priority': 'low'}
             if purge:
-                transcoding_params["behavior"] = "delete"
+                transcoding_params['behavior'] = 'delete'
 
-            print(f"Sarting transcodings on {item['oid']}")
+            print(f'Starting transcoding task on {item["oid"]}')
             msc.api(
                 'tasks/start/',
                 method='post',
@@ -43,14 +39,11 @@ def transcode_all_videos(msc, purge):
                 ),
                 timeout=300,
             )
-        except Exception as e:
+        except msc.RequestError as e:
             if 'has no usable ressources' in str(e):
                 non_transcodable += 1
             else:
-                print(
-                    'WARNING: Failed to start transcoding task of video %s: %s'
-                    % (item['oid'], e)
-                )
+                print(f'WARNING: Failed to start transcoding task of video {item["oid"]}: {e}')
                 failed += 1
         else:
             succeeded += 1
@@ -65,19 +58,17 @@ if __name__ == '__main__':
     from ms_client.client import MediaServerClient
 
     parser = argparse.ArgumentParser(description=__doc__.strip())
-
     parser.add_argument(
         '--conf', help='Path to the configuration file.', required=True, type=str
     )
-
     parser.add_argument(
         '--purge',
         action='store_true',
         default=False,
         help='If set, will delete all existing resources; otherwise, only missing transcodings will be generated.',
     )
-
     args = parser.parse_args()
+
     msc = MediaServerClient(args.conf)
     msc.check_server()
     transcode_all_videos(msc, args.purge)
