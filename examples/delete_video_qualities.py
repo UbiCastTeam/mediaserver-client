@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+from datetime import datetime, timedelta
 
 try:
     from ms_client.client import MediaServerClient, MediaServerRequestError
@@ -127,7 +128,7 @@ def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_
         logger.info('Nothing to delete in this media.')
 
 
-def process_channel(msc, qualities_to_delete, formats_to_delete, channel_info, enable_delete=False):
+def process_channel(msc, qualities_to_delete, olderthandays, formats_to_delete, channel_info, enable_delete=False):
     # Browse channels from channel parent
     logger.info(f'Getting content of channel {channel_info["oid"]} "{channel_info["title"]}".')
     channel_items = msc.api(
@@ -138,11 +139,21 @@ def process_channel(msc, qualities_to_delete, formats_to_delete, channel_info, e
 
     # Check sub channels
     for entry in channel_items.get('channels', []):
-        process_channel(msc, qualities_to_delete, formats_to_delete, entry, enable_delete=enable_delete)
+        process_channel(msc, qualities_to_delete, olderthandays, formats_to_delete, entry, enable_delete=enable_delete)
 
     logger.info(f'// Checking videos in channel {channel_info["oid"]} "{channel_info["title"]}".')
     # Get video informations
+    now = datetime.now()
     for entry in channel_items.get('videos', []):
+        if olderthandays > 0:
+            media_date = datetime.strptime(entry['add_date'], "%Y-%m-%d %H:%M:%S")
+            cutoff = now - timedelta(days=olderthandays)
+            if media_date > cutoff:
+            # newer than cutoff, skip
+                media_oid = entry['oid']
+                media_title = entry['title']
+                logger.info(f'Media {media_oid} "{media_title}" is newer than {olderthandays} days ago, media skipped.')
+                continue
         remove_resources(msc, entry['oid'], entry['title'], qualities_to_delete, formats_to_delete, enable_delete)
 
 
@@ -167,7 +178,7 @@ def process_csv_file(msc, qualities_to_delete, formats_to_delete, csv_file, enab
                 remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete)
 
 
-def check_resources(msc, qualities_to_delete, formats_to_delete, channel_oid, csv_file, enable_delete=False):
+def check_resources(msc, qualities_to_delete, olderthandays, formats_to_delete, channel_oid, csv_file, enable_delete=False):
     if csv_file:
         # Check if csv file exists
         if not os.path.exists(csv_file):
@@ -187,6 +198,7 @@ def check_resources(msc, qualities_to_delete, formats_to_delete, channel_oid, cs
         process_channel(
             msc,
             qualities_to_delete,
+            olderthandays,
             formats_to_delete,
             channel_parent['info'],
             enable_delete=enable_delete)
@@ -198,6 +210,7 @@ def check_resources(msc, qualities_to_delete, formats_to_delete, channel_oid, cs
         process_channel(
             msc,
             qualities_to_delete,
+            olderthandays,
             formats_to_delete,
             info,
             enable_delete=enable_delete)
@@ -234,6 +247,14 @@ if __name__ == '__main__':
         type=qualities_type)
 
     parser.add_argument(
+        '--olderthandays',
+        dest='olderthandays',
+        help='Process only media older than this number of days',
+        default=0,
+        required=False,
+        type=int)
+
+    parser.add_argument(
         '--formats',
         dest='formats',
         help='File extensions to delete. Format is for example "mp4,aspx". '
@@ -265,6 +286,7 @@ if __name__ == '__main__':
 
     print(f'Configuration path: {args.configuration}')
     print(f'Qualities to delete: {args.qualities}')
+    print(f'Skip media newer than (days): {args.olderthandays}')
     print(f'Enable delete: {args.enable_delete}')
     print(f'Parent channel oid: {args.channel_oid}')
     print(f'CSV file: {args.csv_file}')
@@ -282,6 +304,7 @@ if __name__ == '__main__':
     rc = check_resources(
         msc,
         args.qualities,
+        args.olderthandays,
         args.formats.split(',') if args.formats else None,
         args.channel_oid,
         args.csv_file,
