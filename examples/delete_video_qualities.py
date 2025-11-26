@@ -128,7 +128,7 @@ def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_
         logger.info('Nothing to delete in this media.')
 
 
-def process_channel(msc, qualities_to_delete, olderthandays, onlyfrommiris, formats_to_delete, channel_info, enable_delete=False):
+def process_channel(msc, qualities_to_delete, older_than_days, only_from_miris, formats_to_delete, channel_info, enable_delete=False):
     # Browse channels from channel parent
     logger.info(f'Getting content of channel {channel_info["oid"]} "{channel_info["title"]}".')
     channel_items = msc.api(
@@ -139,26 +139,26 @@ def process_channel(msc, qualities_to_delete, olderthandays, onlyfrommiris, form
 
     # Check sub channels
     for entry in channel_items.get('channels', []):
-        process_channel(msc, qualities_to_delete, olderthandays, onlyfrommiris, formats_to_delete, entry, enable_delete=enable_delete)
+        process_channel(msc, qualities_to_delete, older_than_days, only_from_miris, formats_to_delete, entry, enable_delete=enable_delete)
 
     logger.info(f'// Checking videos in channel {channel_info["oid"]} "{channel_info["title"]}".')
     # Get video informations
     now = datetime.now()
     for entry in channel_items.get('videos', []):
-        if onlyfrommiris > 0:
+        if only_from_miris:
             if 'miris-box-' not in entry['origin']:
                 media_oid = entry['oid']
                 media_title = entry['title']
                 logger.info(f'Media {media_oid} "{media_title}" does not originate from a Miris recorder, media skipped.')
                 continue
-        if olderthandays > 0:
+        if older_than_days > 0:
             media_date = datetime.strptime(entry['add_date'], "%Y-%m-%d %H:%M:%S")
-            cutoff = now - timedelta(days=olderthandays)
+            cutoff = now - timedelta(days=older_than_days)
             if media_date > cutoff:
             # newer than cutoff, skip
                 media_oid = entry['oid']
                 media_title = entry['title']
-                logger.info(f'Media {media_oid} "{media_title}" is newer than {olderthandays} days ago, media skipped.')
+                logger.info(f'Media {media_oid} "{media_title}" is newer than {older_than_days} days ago, media skipped.')
                 continue
         remove_resources(msc, entry['oid'], entry['title'], qualities_to_delete, formats_to_delete, enable_delete)
 
@@ -184,7 +184,7 @@ def process_csv_file(msc, qualities_to_delete, formats_to_delete, csv_file, enab
                 remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete)
 
 
-def check_resources(msc, qualities_to_delete, olderthandays, onlyfrommiris, formats_to_delete, channel_oid, csv_file, enable_delete=False):
+def check_resources(msc, qualities_to_delete, older_than_days, only_from_miris, formats_to_delete, channel_oid, csv_file, enable_delete=False):
     if csv_file:
         # Check if csv file exists
         if not os.path.exists(csv_file):
@@ -204,8 +204,8 @@ def check_resources(msc, qualities_to_delete, olderthandays, onlyfrommiris, form
         process_channel(
             msc,
             qualities_to_delete,
-            olderthandays,
-            onlyfrommiris,
+            older_than_days,
+            only_from_miris,
             formats_to_delete,
             channel_parent['info'],
             enable_delete=enable_delete)
@@ -217,8 +217,8 @@ def check_resources(msc, qualities_to_delete, olderthandays, onlyfrommiris, form
         process_channel(
             msc,
             qualities_to_delete,
-            olderthandays,
-            onlyfrommiris,
+            older_than_days,
+            only_from_miris,
             formats_to_delete,
             info,
             enable_delete=enable_delete)
@@ -255,20 +255,19 @@ if __name__ == '__main__':
         type=qualities_type)
 
     parser.add_argument(
-        '--olderthandays',
-        dest='olderthandays',
-        help='Process only media older than this number of days',
+        '--older-than-days',
+        dest='older_than_days',
+        help='Process only media older than this number of days.',
         default=0,
         required=False,
         type=int)
 
     parser.add_argument(
-        '--onlyfrommiris',
-        dest='onlyfrommiris',
-        help='Only process media originating from Miris recorders.',
-        default=0,
-        required=False,
-        type=int)
+        '--only-from-miris',
+        action='store_true',
+        default=False,
+        dest='only_from_miris',
+        help='Only process media originating from Miris recorders.')
 
     parser.add_argument(
         '--formats',
@@ -302,8 +301,8 @@ if __name__ == '__main__':
 
     print(f'Configuration path: {args.configuration}')
     print(f'Qualities to delete: {args.qualities}')
-    print(f'Skip media newer than (days): {args.olderthandays}')
-    print(f'Only process media originating from Miris recorders: {args.onlyfrommiris}')
+    print(f'Skip media newer than (days): {args.older_than_days}')
+    print(f'Only process media originating from Miris recorders: {args.only_from_miris}')
     print(f'Enable delete: {args.enable_delete}')
     print(f'Parent channel oid: {args.channel_oid}')
     print(f'CSV file: {args.csv_file}')
@@ -321,8 +320,8 @@ if __name__ == '__main__':
     rc = check_resources(
         msc,
         args.qualities,
-        args.olderthandays,
-        args.onlyfrommiris,
+        args.older_than_days,
+        args.only_from_miris,
         args.formats.split(',') if args.formats else None,
         args.channel_oid,
         args.csv_file,
