@@ -33,7 +33,8 @@ def remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_t
             video_title,
             qualities_to_delete,
             formats_to_delete,
-            enable_delete=enable_delete)
+            enable_delete=enable_delete
+        )
     except Exception as e:
         logger.error(f'Error: {e}, retrying in 30s.')
         time.sleep(30)
@@ -43,7 +44,8 @@ def remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_t
             video_title,
             qualities_to_delete,
             formats_to_delete,
-            enable_delete=enable_delete)
+            enable_delete=enable_delete
+        )
 
 
 def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete=False):
@@ -128,7 +130,10 @@ def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_
         logger.info('Nothing to delete in this media.')
 
 
-def process_channel(msc, qualities_to_delete, older_than_days, only_from_miris, formats_to_delete, channel_info, enable_delete=False):
+def process_channel(
+    msc, qualities_to_delete, older_than_days, only_from_miris,
+    formats_to_delete, channel_info, enable_delete=False
+):
     # Browse channels from channel parent
     logger.info(f'Getting content of channel {channel_info["oid"]} "{channel_info["title"]}".')
     channel_items = msc.api(
@@ -139,26 +144,32 @@ def process_channel(msc, qualities_to_delete, older_than_days, only_from_miris, 
 
     # Check sub channels
     for entry in channel_items.get('channels', []):
-        process_channel(msc, qualities_to_delete, older_than_days, only_from_miris, formats_to_delete, entry, enable_delete=enable_delete)
+        process_channel(
+            msc,
+            qualities_to_delete,
+            older_than_days,
+            only_from_miris,
+            formats_to_delete,
+            entry,
+            enable_delete=enable_delete
+        )
 
     logger.info(f'// Checking videos in channel {channel_info["oid"]} "{channel_info["title"]}".')
     # Get video informations
     now = datetime.now()
     for entry in channel_items.get('videos', []):
-        if only_from_miris:
-            if 'miris-box-' not in entry['origin']:
-                media_oid = entry['oid']
-                media_title = entry['title']
-                logger.info(f'Media {media_oid} "{media_title}" does not originate from a Miris recorder, media skipped.')
-                continue
+        if only_from_miris and 'miris-box-' not in entry['origin']:
+            logger.info(
+                f'Media {entry["oid"]} "{entry["title"]}" does not originate from a Miris recorder, media skipped.'
+            )
+            continue
         if older_than_days > 0:
             media_date = datetime.strptime(entry['add_date'], "%Y-%m-%d %H:%M:%S")
-            cutoff = now - timedelta(days=older_than_days)
-            if media_date > cutoff:
-            # newer than cutoff, skip
-                media_oid = entry['oid']
-                media_title = entry['title']
-                logger.info(f'Media {media_oid} "{media_title}" is newer than {older_than_days} days ago, media skipped.')
+            if media_date > now - timedelta(days=older_than_days):
+                # Newer than cutoff, skip
+                logger.info(
+                    f'Media {entry["oid"]} "{entry["title"]}" is newer than {older_than_days} days ago, media skipped.'
+                )
                 continue
         remove_resources(msc, entry['oid'], entry['title'], qualities_to_delete, formats_to_delete, enable_delete)
 
@@ -184,7 +195,10 @@ def process_csv_file(msc, qualities_to_delete, formats_to_delete, csv_file, enab
                 remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete)
 
 
-def check_resources(msc, qualities_to_delete, older_than_days, only_from_miris, formats_to_delete, channel_oid, csv_file, enable_delete=False):
+def check_resources(
+    msc, qualities_to_delete, older_than_days, only_from_miris,
+    formats_to_delete, channel_oid, csv_file, enable_delete=False
+):
     if csv_file:
         # Check if csv file exists
         if not os.path.exists(csv_file):
