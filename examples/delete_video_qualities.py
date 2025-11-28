@@ -51,8 +51,13 @@ def remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_t
 def _remove_resources(msc, video_oid, video_title, qualities_to_delete, formats_to_delete, enable_delete=False):
     logger.info(f'-- Media {video_oid} "{video_title}"')
 
-    # Update resources from video media
-    resources = msc.api('medias/resources-check/', method='post', data=dict(oid=video_oid))
+    try:
+        # Update resources from video media
+        resources = msc.api('medias/resources-check/', method='post', data=dict(oid=video_oid))
+    except Exception as e:
+        # Log error but do not halt and proceed to the next media. This can happen when the media is in the recycle bin.
+        logger.error(f'Error {e}: failed to update resources from media {video_oid}.')
+        return
 
     # Get resources from video media
     resources = msc.api('medias/resources-list/', params=dict(oid=video_oid))['resources']
