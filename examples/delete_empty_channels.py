@@ -100,9 +100,9 @@ def main():
         type=str)
 
     parser.add_argument(
-        "--apply",
-        help="Whether to apply changes or not",
-        action="store_true",
+        '--apply',
+        help='Whether to apply changes or not',
+        action='store_true',
     )
 
     parser.add_argument(
