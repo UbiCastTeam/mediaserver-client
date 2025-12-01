@@ -28,7 +28,7 @@ def chunked_upload(
     """
     Function to send a file using the chunked upload.
     """
-    if remote_path and not re.match(r'^[A-Za-z0-9_-]{10,50}/.+$', remote_path):
+    if remote_path and not re.match(r'^[A-Za-z0-9_-]{10,60}/.+$', remote_path):
         raise ValueError('Invalid "remote_path" argument value.')
 
     logger.info('Uploading file "%s".', file_path.name)
@@ -131,7 +131,7 @@ def hls_upload(
     ts_dir = m3u8_path.parent / m3u8_path.name.strip('.').rsplit('.', 1)[0]
     if not ts_dir.is_dir():
         raise ValueError(f'The ts directory "{ts_dir}" of the m3u8 file "{m3u8_path}" does not exist.')
-    if remote_dir and not re.match(r'^[A-Za-z0-9_-]{10,50}$', remote_dir):
+    if remote_dir and not re.match(r'^[A-Za-z0-9_-]{10,60}$', remote_dir):
         raise ValueError('Invalid "remote_dir" argument value.')
 
     logger.info('Uploading HLS "%s".', m3u8_path.name)
