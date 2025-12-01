@@ -5,11 +5,8 @@ DOCKER_RUN ?= docker run --rm -it --user "$(shell id -u):$(shell id -g)" -v ${CU
 build:
 	docker build -t ${DOCKER_IMAGE_NAME} ${BUILD_ARGS} .
 
-rebuild:
-	BUILD_ARGS="--no-cache" make docker_build
-
-shell:
-	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} /bin/bash
+rebuild:BUILD_ARGS = --no-cache
+rebuild:build
 
 lint:
 	${DOCKER_RUN} ${DOCKER_IMAGE_NAME} make lint_local
@@ -28,6 +25,12 @@ deadcode:
 
 deadcode_local:
 	vulture --exclude .eggs --min-confidence 90 .
+
+network_create:
+	@docker network create ubicast_network > /dev/null 2>&1 || true
+
+shell:network_create
+	${DOCKER_RUN} --network ubicast_network --network-alias=msclient ${DOCKER_IMAGE_NAME} /bin/bash
 
 test:
 	${DOCKER_RUN} -e "PYTEST_ARGS=${PYTEST_ARGS}" ${DOCKER_IMAGE_NAME} make test_local
