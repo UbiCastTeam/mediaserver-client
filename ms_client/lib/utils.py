@@ -9,6 +9,7 @@ OBJECT_TYPES = {'v': 'video', 'l': 'live', 'p': 'photos', 'c': 'channel'}
 # Terminal colors
 if sys.stdout.isatty():
     class TTYColors:
+        GRAY = '\033[90m'
         RED = '\033[31m'
         GREEN = '\033[32m'
         YELLOW = '\033[33m'
@@ -18,7 +19,7 @@ if sys.stdout.isatty():
         RESET = '\033[0m'
 else:
     class TTYColors:
-        RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = RESET = ''
+        GRAY = RED = GREEN = YELLOW = BLUE = PURPLE = TEAL = RESET = ''
 
 
 def _size_repr(value: int, unit: str, short: bool = True) -> str:
