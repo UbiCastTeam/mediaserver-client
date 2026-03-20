@@ -27,7 +27,7 @@ class MediaServerRequestError(Exception):
         self.status_code = status_code
         self.error_code = error_code
         self.response = response
-        logger.error(message)
+        logger.warning(message)
         super().__init__(message)
 
 

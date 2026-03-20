@@ -210,7 +210,7 @@ def delete_qualities_from_videos(
         try:
             result = remove_resources(**params)
         except Exception as err:
-            logger.error(f'Error: {err}, retrying in 30s.')
+            logger.warning(f'Error: {err}, retrying in 30s.')
             time.sleep(30)
             result = remove_resources(**params)
 
